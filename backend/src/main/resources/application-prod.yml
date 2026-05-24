@@ -1,0 +1,20 @@
+# Production profile - used on RENDER (the deployed backend).
+# Points at the LIVE AIESEC environment.
+#
+# Activated by setting SPRING_PROFILES_ACTIVE=prod on Render.
+# Credentials come from the production developer application
+# (the one approved on auth.aiesec.org).
+
+app:
+  aiesec:
+    # OAuth authorization + token endpoints (production auth server).
+    auth-base-url: https://auth.aiesec.org
+    authorize-path: /oauth/authorize
+    token-path: /oauth/token
+
+    # GraphQL GIS API (production).
+    graphql-url: https://gis-api.aiesec.org/graphql
+
+logging:
+  level:
+    org.aiesec.news: INFO

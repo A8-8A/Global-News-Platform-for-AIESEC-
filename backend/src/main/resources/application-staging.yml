@@ -1,0 +1,21 @@
+# Staging profile - used for LOCAL DEVELOPMENT.
+# Points at the AIESEC staging environment so you can hammer the
+# OAuth flow and API without touching live data or risking rate limits.
+#
+# Credentials here come from a developer application created INSIDE
+# EXPA staging - a separate app from the production one, with its own
+# Client ID / Secret.
+
+app:
+  aiesec:
+    # OAuth authorization + token endpoints (staging auth server).
+    auth-base-url: https://auth-staging.aiesec.org
+    authorize-path: /oauth/authorize
+    token-path: /oauth/token
+
+    # GraphQL GIS API (staging).
+    graphql-url: https://staging-jruby.aiesec.org/graphql
+
+logging:
+  level:
+    org.aiesec.news: DEBUG

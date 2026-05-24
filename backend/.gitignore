@@ -1,0 +1,22 @@
+# --- Secrets: NEVER commit these ---
+.env
+.env.local
+*.env
+
+# --- Maven build output ---
+target/
+
+# --- IDE ---
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
