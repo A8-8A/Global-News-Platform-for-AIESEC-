@@ -1,8 +1,10 @@
 package org.aiesec.news.repository;
 
+import org.aiesec.news.domain.Role;
 import org.aiesec.news.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -12,4 +14,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     /** Find an admin by email (used on admin login). */
     Optional<User> findByEmail(String email);
+
+    /** All users with a given role - used to list MCPs for activity view. */
+    List<User> findByRole(Role role);
 }
