@@ -1,11 +1,12 @@
-// Login page.
+// Login page (route "/login").
 //
-// "Log in with AIESEC" does NOT submit a form. It redirects the browser
-// to AIESEC's authorize endpoint. AIESEC handles the actual sign-in;
-// the user comes back to /auth/callback with a ?code=... which the
-// OAuthCallback page then exchanges (via our backend) for a session.
+// "Log in with AIESEC" does NOT submit a form - it redirects the browser
+// to AIESEC's authorize endpoint. AIESEC signs the user in and returns
+// them to /auth/callback with a ?code=..., which OAuthCallback exchanges
+// (via our backend) for a session.
 
 import { Link } from 'react-router-dom';
+import { Human } from '../components/Brand';
 
 const AUTHORIZE_URL = import.meta.env.VITE_AIESEC_AUTHORIZE_URL;
 const CLIENT_ID = import.meta.env.VITE_AIESEC_CLIENT_ID;
@@ -13,10 +14,6 @@ const REDIRECT_URI = import.meta.env.VITE_AIESEC_REDIRECT_URI;
 
 export default function Login() {
   function loginWithAiesec() {
-    // Build the OAuth authorize URL.
-    //   response_type=code  -> authorization-code flow
-    //   client_id           -> our developer application's UID (public)
-    //   redirect_uri        -> must EXACTLY match the registered URI
     const params = new URLSearchParams({
       response_type: 'code',
       client_id: CLIENT_ID,
@@ -26,23 +23,55 @@ export default function Login() {
   }
 
   return (
-    <div className="max-w-sm mx-auto mt-10 bg-white rounded-lg border border-gray-200 p-6">
-      <h1 className="text-xl font-bold text-gray-900 mb-1">Log in</h1>
-      <p className="text-sm text-gray-500 mb-6">
-        MCPs and members sign in with their AIESEC account.
-      </p>
+    <div className="max-w-md mx-auto px-4 py-12">
+      <div className="card overflow-hidden anim-scale-in">
+        {/* branded top */}
+        <div
+          className="relative px-8 pt-9 pb-12 text-center overflow-hidden"
+          style={{ background: 'linear-gradient(140deg,#037EF3,#024a91)' }}
+        >
+          <div className="blob" style={{ width: 180, height: 180, background: '#7cc0ff', top: -70, left: -40, opacity: 0.5 }} />
+          <div className="relative">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center">
+              <Human className="h-9" float />
+            </div>
+            <h1 className="mt-4 font-display font-black text-2xl text-white">
+              Welcome back
+            </h1>
+            <p className="mt-1 text-sm text-white/80">
+              The Global AIESEC News Platform
+            </p>
+          </div>
+        </div>
 
-      <button
-        onClick={loginWithAiesec}
-        className="w-full bg-aiesec text-white py-2.5 rounded font-medium hover:bg-aiesec-dark"
-      >
-        Log in with AIESEC
-      </button>
+        {/* body */}
+        <div className="px-8 py-8 -mt-6 bg-white rounded-t-2xl relative">
+          <p className="text-sm text-ink-soft text-center">
+            MCPs and members sign in securely with their AIESEC account.
+          </p>
 
-      <div className="mt-6 pt-4 border-t border-gray-100 text-center">
-        <Link to="/admin/login" className="text-sm text-gray-500 hover:text-aiesec">
-          Admin login
-        </Link>
+          <button
+            onClick={loginWithAiesec}
+            className="btn-primary w-full mt-6 py-3.5 flex items-center justify-center gap-2"
+          >
+            <Human className="h-5" />
+            Log in with AIESEC
+          </button>
+
+          <p className="mt-4 text-[11px] text-ink-soft/70 text-center leading-relaxed">
+            You will be redirected to AIESEC to sign in. We never see or
+            store your AIESEC password.
+          </p>
+
+          <div className="mt-6 pt-5 border-t border-line text-center">
+            <Link
+              to="/admin/login"
+              className="text-sm font-bold text-ink-soft hover:text-aiesec transition-colors"
+            >
+              Admin login &rarr;
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

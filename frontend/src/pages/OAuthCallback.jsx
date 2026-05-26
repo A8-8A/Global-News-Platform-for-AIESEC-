@@ -1,16 +1,15 @@
-// OAuth callback page.
+// OAuth callback page (route "/auth/callback").
 //
-// AIESEC redirects the user here after sign-in, with ?code=<temp code>.
-// This page hands that code to OUR backend, which performs the secret
-// -bearing code->token exchange, calls the GIS API to identify the
-// person + role, creates/updates the local user, and returns our JWT.
-//
-// The client_secret and the token exchange NEVER happen in the browser.
+// AIESEC redirects here after sign-in with ?code=<temp code>. We hand
+// that code to our backend, which does the secret-bearing token
+// exchange, calls the GIS API to identify the person + role, and
+// returns our JWT. The secret and the exchange never touch the browser.
 
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { Human } from '../components/Brand';
 
 export default function OAuthCallback() {
   const [searchParams] = useSearchParams();
@@ -18,8 +17,8 @@ export default function OAuthCallback() {
   const { completeLogin } = useAuth();
 
   const [error, setError] = useState(null);
-  // Guard: React 18 StrictMode runs effects twice in dev. We must not
-  // POST the (single-use) code twice.
+  // React 18 StrictMode runs effects twice in dev; the OAuth code is
+  // single-use, so guard against a double exchange.
   const exchanged = useRef(false);
 
   useEffect(() => {
@@ -38,16 +37,11 @@ export default function OAuthCallback() {
       return;
     }
 
-    // Hand the code to our backend for the exchange.
-    // Backend endpoint (to be implemented): POST /api/auth/aiesec
-    //   request:  { code }
-    //   response: { token, user: { id, role, fullName, ... } }
     api
       .post('/api/auth/aiesec', { code })
       .then(({ token, user }) => {
         completeLogin(token, user);
-        // Send the user somewhere sensible for their role.
-        navigate(user.role === 'ADMIN' ? '/admin' : '/', { replace: true });
+        navigate(user.role === 'ADMIN' ? '/admin' : '/feed', { replace: true });
       })
       .catch((e) => {
         setError(e.message || 'Login failed. Please try again.');
@@ -56,20 +50,43 @@ export default function OAuthCallback() {
 
   if (error) {
     return (
-      <div className="max-w-sm mx-auto mt-10 bg-white rounded-lg border border-gray-200 p-6 text-center">
-        <h1 className="text-lg font-bold text-gray-900 mb-2">Login failed</h1>
-        <p className="text-sm text-gray-600 mb-4">{error}</p>
-        <button
-          onClick={() => navigate('/login')}
-          className="text-sm text-aiesec hover:underline"
-        >
-          Back to login
-        </button>
+      <div className="max-w-md mx-auto px-4 py-16">
+        <div className="card anim-scale-in flex flex-col items-center text-center px-8 py-12">
+          <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center text-3xl mb-4">
+            &#9888;
+          </div>
+          <h1 className="font-display font-black text-xl text-ink">
+            Login failed
+          </h1>
+          <p className="mt-2 text-sm text-ink-soft max-w-xs">{error}</p>
+          <button
+            onClick={() => navigate('/login')}
+            className="btn-primary mt-6 px-5 py-2.5 text-sm"
+          >
+            Back to login
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mt-10 text-center text-gray-500">Signing you in...</div>
+    <div className="min-h-[60vh] flex flex-col items-center justify-center gap-5">
+      <div className="relative w-20 h-20">
+        <div className="absolute inset-0 rounded-full border-4 border-aiesec/15" />
+        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-aiesec anim-spin-slow" />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Human className="h-9" />
+        </div>
+      </div>
+      <div className="text-center">
+        <p className="font-display font-extrabold text-lg text-ink">
+          Signing you in
+        </p>
+        <p className="text-sm text-ink-soft mt-0.5">
+          Verifying your AIESEC account...
+        </p>
+      </div>
+    </div>
   );
 }

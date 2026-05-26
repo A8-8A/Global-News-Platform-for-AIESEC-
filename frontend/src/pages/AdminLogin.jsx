@@ -1,9 +1,8 @@
-// Admin login - the SEPARATE authentication path (not AIESEC OAuth).
+// Admin login (route "/admin/login").
 //
-// Admins are platform moderators, not AIESEC EXPA users. They sign in
-// with an email + password that this platform manages itself. The
-// backend verifies the credentials and returns the same kind of JWT
-// the OAuth path issues - just with role ADMIN.
+// The SEPARATE auth path - not AIESEC OAuth. Admins are platform
+// moderators with an email + password this platform manages itself.
+// The backend returns the same kind of JWT, with role ADMIN.
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -27,9 +26,6 @@ export default function AdminLogin() {
     }
     setSubmitting(true);
     try {
-      // Endpoint (to be implemented): POST /api/auth/admin
-      //   request:  { email, password }
-      //   response: { token, user: { id, role: 'ADMIN', email, ... } }
       const { token, user } = await api.post('/api/auth/admin', {
         email: email.trim(),
         password,
@@ -44,38 +40,60 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="max-w-sm mx-auto mt-10 bg-white rounded-lg border border-gray-200 p-6">
-      <h1 className="text-xl font-bold text-gray-900 mb-1">Admin login</h1>
-      <p className="text-sm text-gray-500 mb-6">
-        For platform moderators only.
-      </p>
+    <div className="max-w-md mx-auto px-4 py-12">
+      <div className="card overflow-hidden anim-scale-in">
+        <div
+          className="px-8 py-7 text-center"
+          style={{ background: 'linear-gradient(140deg,#0d1b2a,#024a91)' }}
+        >
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-white/10 flex items-center justify-center text-2xl">
+            &#128737;
+          </div>
+          <h1 className="mt-3 font-display font-black text-xl text-white">
+            Admin access
+          </h1>
+          <p className="text-xs text-white/70 mt-1">
+            Platform moderators only
+          </p>
+        </div>
 
-      {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+        <div className="px-8 py-7">
+          {error && (
+            <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2 anim-fade-in">
+              {error}
+            </div>
+          )}
 
-      <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-      <input
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="w-full border border-gray-300 rounded px-3 py-2 mb-4 text-sm"
-      />
+          <label className="block text-xs font-bold uppercase tracking-wide text-ink-soft mb-1.5">
+            Email
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full border border-line rounded-xl px-3.5 py-2.5 text-sm mb-4 outline-none focus:border-aiesec transition-colors"
+          />
 
-      <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-      <input
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-        className="w-full border border-gray-300 rounded px-3 py-2 mb-5 text-sm"
-      />
+          <label className="block text-xs font-bold uppercase tracking-wide text-ink-soft mb-1.5">
+            Password
+          </label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+            className="w-full border border-line rounded-xl px-3.5 py-2.5 text-sm mb-5 outline-none focus:border-aiesec transition-colors"
+          />
 
-      <button
-        onClick={handleSubmit}
-        disabled={submitting}
-        className="w-full bg-aiesec text-white py-2.5 rounded font-medium hover:bg-aiesec-dark disabled:opacity-50"
-      >
-        {submitting ? 'Signing in...' : 'Sign in'}
-      </button>
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="btn-primary w-full py-3"
+          >
+            {submitting ? 'Signing in...' : 'Sign in'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

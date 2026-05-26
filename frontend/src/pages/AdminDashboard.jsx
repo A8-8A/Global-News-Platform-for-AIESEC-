@@ -1,48 +1,61 @@
-// Admin dashboard - ADMIN only (route-guarded).
+// Admin dashboard (route "/admin") - ADMIN only (route-guarded).
 //
-// Three tabs, matching the backend's admin capabilities:
+// Three tabs over the backend's admin capabilities:
 //   Queue     - pending posts; approve / reject
-//   MCPs      - per-MCP posting activity summary
+//   MCPs      - per-MCP posting activity
 //   Audit log - the full trail of admin actions
-//
-// Backend endpoints used (all under /api/admin, ADMIN-only):
-//   GET    /api/admin/posts/pending
-//   POST   /api/admin/posts/{id}/approve
-//   POST   /api/admin/posts/{id}/reject
-//   DELETE /api/admin/posts/{id}
-//   GET    /api/admin/mcp-activity
-//   GET    /api/admin/audit-log
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { api } from '../api/client';
+import {
+  FeedSkeleton,
+  EmptyState,
+  ErrorState,
+  Spinner,
+  timeAgo,
+} from '../components/ui';
+import { Avatar } from '../components/Brand';
 
 const TABS = [
-  { id: 'queue', label: 'Approval queue' },
-  { id: 'mcps', label: 'MCP activity' },
-  { id: 'audit', label: 'Audit log' },
+  { id: 'queue', label: 'Approval queue', icon: '\u{1F4E5}' },
+  { id: 'mcps', label: 'MCP activity', icon: '\u{1F4CA}' },
+  { id: 'audit', label: 'Audit log', icon: '\u{1F4DC}' },
 ];
 
 export default function AdminDashboard() {
   const [tab, setTab] = useState('queue');
 
   return (
-    <div>
-      <h1 className="text-xl font-bold text-gray-900 mb-4">Admin dashboard</h1>
+    <div className="max-w-3xl mx-auto px-4 py-8">
+      <div
+        className="rounded-2xl px-6 py-6 mb-5 relative overflow-hidden anim-fade-up"
+        style={{ background: 'linear-gradient(135deg,#0d1b2a,#024a91)' }}
+      >
+        <div className="blob" style={{ width: 180, height: 180, background: '#037EF3', top: -70, right: -40, opacity: 0.5 }} />
+        <div className="relative">
+          <h1 className="font-display font-black text-2xl text-white">
+            Admin dashboard
+          </h1>
+          <p className="text-white/70 text-sm mt-1">
+            Moderate content and keep the feed trustworthy.
+          </p>
+        </div>
+      </div>
 
-      {/* Tab bar */}
-      <div className="flex gap-1 border-b border-gray-200 mb-5">
+      <div className="flex gap-2 mb-6">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             className={
-              'px-4 py-2 text-sm font-medium -mb-px border-b-2 ' +
+              'flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ' +
               (tab === t.id
-                ? 'border-aiesec text-aiesec'
-                : 'border-transparent text-gray-500 hover:text-gray-700')
+                ? 'bg-aiesec text-white shadow-glow'
+                : 'bg-white border border-line text-ink-soft hover:border-aiesec/40')
             }
           >
-            {t.label}
+            <span>{t.icon}</span>
+            <span className="hidden sm:inline">{t.label}</span>
           </button>
         ))}
       </div>
@@ -54,55 +67,73 @@ export default function AdminDashboard() {
   );
 }
 
-// ---------------------------------------------------------------------
-// Tab 1: Approval queue
-// ---------------------------------------------------------------------
-
 function ApprovalQueue() {
   const [pending, setPending] = useState([]);
   const [status, setStatus] = useState('loading');
+  const [acting, setActing] = useState(null);
 
-  function load() {
+  const load = useCallback(() => {
     setStatus('loading');
     api
       .get('/api/admin/posts/pending')
-      .then((data) => {
-        setPending(data || []);
-        setStatus('ready');
-      })
+      .then((data) => { setPending(data || []); setStatus('ready'); })
       .catch(() => setStatus('error'));
-  }
+  }, []);
 
-  useEffect(load, []);
+  useEffect(load, [load]);
 
   async function decide(postId, decision) {
+    setActing(postId);
     try {
       await api.post(`/api/admin/posts/${postId}/${decision}`);
       setPending((prev) => prev.filter((p) => p.id !== postId));
     } catch {
       load();
+    } finally {
+      setActing(null);
     }
   }
 
-  if (status === 'loading') return <Muted>Loading...</Muted>;
-  if (status === 'error') return <Muted>Could not load the queue.</Muted>;
-  if (pending.length === 0) return <Muted>Nothing pending. All caught up.</Muted>;
+  if (status === 'loading') return <FeedSkeleton count={3} />;
+  if (status === 'error')
+    return <ErrorState message="Could not load the approval queue." onRetry={load} />;
+  if (pending.length === 0)
+    return (
+      <EmptyState
+        icon={'\u2705'}
+        title="All caught up"
+        message="No posts are waiting for review. The queue is clear."
+      />
+    );
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-gray-500">
-        Posts that exceeded an MCP's weekly limit. Approve to publish, reject
-        to send back to the MCP.
+    <div className="space-y-4 stagger">
+      <p className="text-sm text-ink-soft">
+        {pending.length} post{pending.length === 1 ? '' : 's'} exceeded an
+        MCP's weekly limit and need a decision.
       </p>
       {pending.map((post) => (
-        <div key={post.id} className="bg-white rounded-lg border border-gray-200 p-5">
-          <h2 className="font-bold text-gray-900">{post.title}</h2>
-          <p className="text-xs text-gray-500 mt-0.5">
-            {post.authorName}
-            {post.authorOffice ? ` · ${post.authorOffice}` : ''}
-            {post.createdAt ? ` · ${fmt(post.createdAt)}` : ''}
-          </p>
-          <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">
+        <div key={post.id} className="card p-6">
+          <div className="flex items-center gap-3">
+            <Avatar name={post.authorName} size={42} />
+            <div className="min-w-0">
+              <p className="font-display font-extrabold text-ink truncate">
+                {post.authorName}
+              </p>
+              <p className="text-xs text-ink-soft truncate">
+                {post.authorOffice ? `${post.authorOffice} - ` : ''}
+                {timeAgo(post.createdAt)}
+              </p>
+            </div>
+            <span className="ml-auto text-[11px] font-bold uppercase tracking-wide text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full">
+              Pending
+            </span>
+          </div>
+
+          <h3 className="font-display font-extrabold text-lg text-ink mt-4">
+            {post.title}
+          </h3>
+          <p className="text-sm text-ink-soft mt-1.5 whitespace-pre-wrap leading-relaxed">
             {post.content}
           </p>
           {post.mediaUrl && (
@@ -110,21 +141,24 @@ function ApprovalQueue() {
               href={post.mediaUrl}
               target="_blank"
               rel="noreferrer"
-              className="text-sm text-aiesec hover:underline mt-1 inline-block"
+              className="text-sm font-bold text-aiesec mt-2 inline-block"
             >
               View attachment
             </a>
           )}
-          <div className="flex gap-2 mt-4">
+
+          <div className="flex gap-2 mt-5">
             <button
               onClick={() => decide(post.id, 'approve')}
-              className="bg-aiesec text-white px-3 py-1.5 rounded text-sm hover:bg-aiesec-dark"
+              disabled={acting === post.id}
+              className="btn-primary px-5 py-2.5 text-sm"
             >
-              Approve
+              {acting === post.id ? '...' : 'Approve'}
             </button>
             <button
               onClick={() => decide(post.id, 'reject')}
-              className="border border-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm hover:bg-gray-50"
+              disabled={acting === post.id}
+              className="px-5 py-2.5 text-sm font-bold rounded-xl border border-line text-ink-soft hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
             >
               Reject
             </button>
@@ -135,113 +169,110 @@ function ApprovalQueue() {
   );
 }
 
-// ---------------------------------------------------------------------
-// Tab 2: MCP activity
-// ---------------------------------------------------------------------
-
 function McpActivity() {
   const [rows, setRows] = useState([]);
   const [status, setStatus] = useState('loading');
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setStatus('loading');
     api
       .get('/api/admin/mcp-activity')
-      .then((data) => {
-        setRows(data || []);
-        setStatus('ready');
-      })
+      .then((data) => { setRows(data || []); setStatus('ready'); })
       .catch(() => setStatus('error'));
   }, []);
 
-  if (status === 'loading') return <Muted>Loading...</Muted>;
-  if (status === 'error') return <Muted>Could not load MCP activity.</Muted>;
-  if (rows.length === 0) return <Muted>No MCPs have signed in yet.</Muted>;
+  useEffect(load, [load]);
+
+  if (status === 'loading') return <Spinner label="Loading MCP activity..." />;
+  if (status === 'error')
+    return <ErrorState message="Could not load MCP activity." onRetry={load} />;
+  if (rows.length === 0)
+    return (
+      <EmptyState
+        icon={'\u{1F465}'}
+        title="No MCPs yet"
+        message="No MCPs have signed in to the platform so far."
+      />
+    );
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-      <table className="w-full text-sm">
-        <thead className="bg-gray-50 text-gray-500 text-left">
-          <tr>
-            <th className="px-4 py-2 font-medium">MCP</th>
-            <th className="px-4 py-2 font-medium">Office</th>
-            <th className="px-4 py-2 font-medium text-right">Total</th>
-            <th className="px-4 py-2 font-medium text-right">Approved</th>
-            <th className="px-4 py-2 font-medium text-right">Pending</th>
-            <th className="px-4 py-2 font-medium text-right">Rejected</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.mcpId} className="border-t border-gray-100">
-              <td className="px-4 py-2 text-gray-900">{r.mcpName}</td>
-              <td className="px-4 py-2 text-gray-500">{r.office || '—'}</td>
-              <td className="px-4 py-2 text-right">{r.totalPosts}</td>
-              <td className="px-4 py-2 text-right">{r.approvedPosts}</td>
-              <td className="px-4 py-2 text-right">{r.pendingPosts}</td>
-              <td className="px-4 py-2 text-right">{r.rejectedPosts}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------
-// Tab 3: Audit log
-// ---------------------------------------------------------------------
-
-function AuditLog() {
-  const [actions, setActions] = useState([]);
-  const [status, setStatus] = useState('loading');
-
-  useEffect(() => {
-    api
-      .get('/api/admin/audit-log')
-      .then((data) => {
-        setActions(data || []);
-        setStatus('ready');
-      })
-      .catch(() => setStatus('error'));
-  }, []);
-
-  if (status === 'loading') return <Muted>Loading...</Muted>;
-  if (status === 'error') return <Muted>Could not load the audit log.</Muted>;
-  if (actions.length === 0) return <Muted>No admin actions recorded yet.</Muted>;
-
-  return (
-    <div className="space-y-2">
-      {actions.map((a) => (
+    <div className="card overflow-hidden anim-fade-up">
+      <div className="grid grid-cols-[1.6fr_repeat(4,1fr)] gap-2 px-5 py-3 bg-aiesec-tint text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+        <span>MCP</span>
+        <span className="text-right">Total</span>
+        <span className="text-right">Live</span>
+        <span className="text-right">Pending</span>
+        <span className="text-right">Rejected</span>
+      </div>
+      {rows.map((r, i) => (
         <div
-          key={a.id}
-          className="bg-white rounded border border-gray-200 px-4 py-2.5 text-sm"
+          key={r.mcpId}
+          className={
+            'grid grid-cols-[1.6fr_repeat(4,1fr)] gap-2 px-5 py-3.5 items-center text-sm ' +
+            (i % 2 ? 'bg-white' : 'bg-aiesec-tint/40')
+          }
         >
-          <div className="flex justify-between">
-            <span className="font-medium text-gray-900">{a.action}</span>
-            <span className="text-gray-400">{fmt(a.createdAt)}</span>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Avatar name={r.mcpName} size={32} />
+            <div className="min-w-0">
+              <p className="font-bold text-ink truncate">{r.mcpName}</p>
+              <p className="text-xs text-ink-soft truncate">{r.office || '-'}</p>
+            </div>
           </div>
-          <p className="text-gray-600 mt-0.5">
-            {a.detail || `${a.targetType} #${a.targetId}`}
-          </p>
-          <p className="text-xs text-gray-400 mt-0.5">by {a.adminName}</p>
+          <span className="text-right font-bold text-ink">{r.totalPosts}</span>
+          <span className="text-right text-aiesec font-bold">{r.approvedPosts}</span>
+          <span className="text-right text-amber-600 font-bold">{r.pendingPosts}</span>
+          <span className="text-right text-ink-soft font-bold">{r.rejectedPosts}</span>
         </div>
       ))}
     </div>
   );
 }
 
-// ---------------------------------------------------------------------
-// shared bits
-// ---------------------------------------------------------------------
+function AuditLog() {
+  const [actions, setActions] = useState([]);
+  const [status, setStatus] = useState('loading');
 
-function Muted({ children }) {
-  return <p className="text-gray-500">{children}</p>;
-}
+  const load = useCallback(() => {
+    setStatus('loading');
+    api
+      .get('/api/admin/audit-log')
+      .then((data) => { setActions(data || []); setStatus('ready'); })
+      .catch(() => setStatus('error'));
+  }, []);
 
-function fmt(iso) {
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return '';
-  }
+  useEffect(load, [load]);
+
+  if (status === 'loading') return <Spinner label="Loading audit log..." />;
+  if (status === 'error')
+    return <ErrorState message="Could not load the audit log." onRetry={load} />;
+  if (actions.length === 0)
+    return (
+      <EmptyState
+        icon={'\u{1F4DC}'}
+        title="No actions logged"
+        message="Admin actions will be recorded here as they happen."
+      />
+    );
+
+  return (
+    <div className="space-y-2.5 stagger">
+      {actions.map((a) => (
+        <div key={a.id} className="card px-5 py-3.5">
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-display font-extrabold text-sm text-aiesec">
+              {a.action}
+            </span>
+            <span className="text-xs text-ink-soft/70 shrink-0">
+              {timeAgo(a.createdAt)}
+            </span>
+          </div>
+          <p className="text-sm text-ink-soft mt-0.5">
+            {a.detail || `${a.targetType} #${a.targetId}`}
+          </p>
+          <p className="text-xs text-ink-soft/70 mt-1">by {a.adminName}</p>
+        </div>
+      ))}
+    </div>
+  );
 }
