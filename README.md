@@ -15,7 +15,7 @@ Global-AIESEC-News-Platform/
 Each subfolder has its own README with full detail. This file is the overview.
 
 ## Architecture
-
+ 
 ```
    Browser
       │
