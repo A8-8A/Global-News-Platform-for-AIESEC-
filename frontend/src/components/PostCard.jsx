@@ -1,9 +1,9 @@
 // A single post in the feed.
 //
-// Interactive: the like button hits POST /api/posts/{id}/like, comments
-// expand inline and post to /api/posts/{id}/comments. Engagement state
-// is optimistic - the UI updates immediately, then reconciles with the
-// server response.
+// Interactive: like button hits POST /api/posts/{id}/like; comments
+// expand inline and post to /api/posts/{id}/comments. Engagement is
+// optimistic - UI updates first, then reconciles with the server.
+// Static styling - no animation.
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -18,7 +18,6 @@ export default function PostCard({ post }) {
 
   const [liked, setLiked] = useState(!!post.likedByMe);
   const [likeCount, setLikeCount] = useState(post.likeCount ?? 0);
-  const [likePulse, setLikePulse] = useState(false);
   const [busyLike, setBusyLike] = useState(false);
 
   const [showComments, setShowComments] = useState(false);
@@ -35,10 +34,6 @@ export default function PostCard({ post }) {
     const next = !liked;
     setLiked(next);
     setLikeCount((c) => c + (next ? 1 : -1));
-    if (next) {
-      setLikePulse(true);
-      setTimeout(() => setLikePulse(false), 420);
-    }
 
     try {
       const res = await api.post(`/api/posts/${post.id}/like`);
@@ -86,9 +81,10 @@ export default function PostCard({ post }) {
   }
 
   return (
-    <article className="card card-hover overflow-hidden">
-      <div className="flex items-center gap-3 px-6 pt-6">
-        <Avatar name={post.authorName} size={46} />
+    <article className="card overflow-hidden">
+      {/* header */}
+      <div className="flex items-center gap-3 px-5 pt-5">
+        <Avatar name={post.authorName} size={44} />
         <div className="min-w-0">
           <p className="font-display font-extrabold text-ink leading-tight truncate">
             {post.authorName || 'AIESEC'}
@@ -100,11 +96,12 @@ export default function PostCard({ post }) {
         </div>
       </div>
 
-      <div className="px-6 pt-4">
-        <h2 className="font-display font-extrabold text-xl text-ink leading-snug">
+      {/* body */}
+      <div className="px-5 pt-3">
+        <h2 className="font-display font-extrabold text-lg text-ink leading-snug">
           {post.title}
         </h2>
-        <p className="mt-2 text-[15px] text-ink-soft leading-relaxed whitespace-pre-wrap">
+        <p className="mt-1.5 text-[15px] text-ink-soft leading-relaxed whitespace-pre-wrap">
           {post.content}
         </p>
         {post.mediaUrl && (
@@ -112,68 +109,63 @@ export default function PostCard({ post }) {
             href={post.mediaUrl}
             target="_blank"
             rel="noreferrer"
-            className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-aiesec hover:gap-3 transition-all"
+            className="mt-2 inline-block text-sm font-bold text-aiesec hover:underline"
           >
             View attachment
           </a>
         )}
       </div>
 
-      <div className="px-6 mt-4 flex items-center gap-3 text-xs text-ink-soft">
-        {likeCount > 0 && (
-          <span className="flex items-center gap-1">
-            <span className="w-4 h-4 rounded-full bg-aiesec text-white text-[9px] flex items-center justify-center">
-              &#9829;
-            </span>
-            {likeCount}
-          </span>
-        )}
-        {commentCount > 0 && (
-          <span>{commentCount} comment{commentCount === 1 ? '' : 's'}</span>
-        )}
-      </div>
+      {/* counts */}
+      {(likeCount > 0 || commentCount > 0) && (
+        <div className="px-5 mt-3 flex items-center gap-3 text-xs text-ink-soft">
+          {likeCount > 0 && <span>{likeCount} like{likeCount === 1 ? '' : 's'}</span>}
+          {commentCount > 0 && (
+            <span>{commentCount} comment{commentCount === 1 ? '' : 's'}</span>
+          )}
+        </div>
+      )}
 
-      <div className="mt-3 px-3 py-1.5 border-t border-line flex">
+      {/* action bar */}
+      <div className="mt-3 px-2 py-1 border-t border-line flex">
         <button
           onClick={toggleLike}
           className={
-            'flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-colors ' +
-            (liked ? 'text-aiesec bg-aiesec/8' : 'text-ink-soft hover:bg-aiesec-tint')
+            'flex-1 py-2.5 rounded text-sm font-bold ' +
+            (liked ? 'text-aiesec' : 'text-ink-soft hover:bg-[#f4f9ff]')
           }
         >
-          <span className={likePulse ? 'anim-pop' : ''}>
-            {liked ? '\u2665' : '\u2661'}
-          </span>
-          Like
+          {liked ? 'Liked' : 'Like'}
         </button>
         <button
           onClick={openComments}
           className={
-            'flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-colors ' +
-            (showComments ? 'text-aiesec bg-aiesec/8' : 'text-ink-soft hover:bg-aiesec-tint')
+            'flex-1 py-2.5 rounded text-sm font-bold ' +
+            (showComments ? 'text-aiesec' : 'text-ink-soft hover:bg-[#f4f9ff]')
           }
         >
           Comment
         </button>
       </div>
 
+      {/* comments */}
       {showComments && (
-        <div className="bg-aiesec-tint border-t border-line px-6 py-4 anim-fade-in">
+        <div className="border-t border-line px-5 py-4 bg-white">
           <div className="flex gap-2">
             <input
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && submitComment()}
-              placeholder={isAuthenticated ? 'Write a comment...' : 'Log in to comment'}
+              placeholder={isAuthenticated ? 'Write a comment' : 'Log in to comment'}
               disabled={!isAuthenticated || posting}
-              className="flex-1 bg-white border border-line rounded-xl px-4 py-2.5 text-sm outline-none focus:border-aiesec transition-colors"
+              className="flex-1 border border-line rounded px-3 py-2 text-sm outline-none focus:border-aiesec"
             />
             <button
               onClick={submitComment}
               disabled={!isAuthenticated || posting || !draft.trim()}
-              className="btn-primary px-4 py-2.5 text-sm"
+              className="btn-primary px-4 py-2 text-sm"
             >
-              {posting ? '...' : 'Send'}
+              Send
             </button>
           </div>
 
@@ -182,14 +174,14 @@ export default function PostCard({ post }) {
               <p className="text-sm text-ink-soft">Loading comments...</p>
             )}
             {comments !== null && comments.length === 0 && (
-              <p className="text-sm text-ink-soft py-2">
-                No comments yet - be the first to reply.
+              <p className="text-sm text-ink-soft py-1">
+                No comments yet.
               </p>
             )}
             {comments?.map((c) => (
-              <div key={c.id} className="flex gap-2.5 anim-fade-up">
-                <Avatar name={c.authorName} size={34} />
-                <div className="bg-white border border-line rounded-2xl px-3.5 py-2 flex-1">
+              <div key={c.id} className="flex gap-2.5">
+                <Avatar name={c.authorName} size={32} />
+                <div className="border border-line rounded px-3 py-2 flex-1">
                   <p className="text-xs font-bold text-ink">
                     {c.authorName}
                     <span className="text-ink-soft font-normal ml-2">

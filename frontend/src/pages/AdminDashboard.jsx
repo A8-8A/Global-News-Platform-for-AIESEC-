@@ -1,25 +1,15 @@
 // Admin dashboard (route "/admin") - ADMIN only (route-guarded).
-//
-// Three tabs over the backend's admin capabilities:
-//   Queue     - pending posts; approve / reject
-//   MCPs      - per-MCP posting activity
-//   Audit log - the full trail of admin actions
+// Three tabs: approval queue, MCP activity, audit log.
 
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '../api/client';
-import {
-  FeedSkeleton,
-  EmptyState,
-  ErrorState,
-  Spinner,
-  timeAgo,
-} from '../components/ui';
+import { FeedSkeleton, EmptyState, ErrorState, Spinner, timeAgo } from '../components/ui';
 import { Avatar } from '../components/Brand';
 
 const TABS = [
-  { id: 'queue', label: 'Approval queue', icon: '\u{1F4E5}' },
-  { id: 'mcps', label: 'MCP activity', icon: '\u{1F4CA}' },
-  { id: 'audit', label: 'Audit log', icon: '\u{1F4DC}' },
+  { id: 'queue', label: 'Approval queue' },
+  { id: 'mcps', label: 'MCP activity' },
+  { id: 'audit', label: 'Audit log' },
 ];
 
 export default function AdminDashboard() {
@@ -27,35 +17,27 @@ export default function AdminDashboard() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      <div
-        className="rounded-2xl px-6 py-6 mb-5 relative overflow-hidden anim-fade-up"
-        style={{ background: 'linear-gradient(135deg,#0d1b2a,#024a91)' }}
-      >
-        <div className="blob" style={{ width: 180, height: 180, background: '#037EF3', top: -70, right: -40, opacity: 0.5 }} />
-        <div className="relative">
-          <h1 className="font-display font-black text-2xl text-white">
-            Admin dashboard
-          </h1>
-          <p className="text-white/70 text-sm mt-1">
-            Moderate content and keep the feed trustworthy.
-          </p>
-        </div>
-      </div>
+      <h1 className="font-display font-extrabold text-2xl text-ink">
+        Admin dashboard
+      </h1>
+      <p className="text-sm text-ink-soft mt-0.5">
+        Moderate content and keep the feed accurate.
+      </p>
 
-      <div className="flex gap-2 mb-6">
+      {/* tabs */}
+      <div className="flex gap-1 border-b border-line mt-5 mb-6">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             className={
-              'flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ' +
+              'px-4 py-2.5 text-sm font-bold -mb-px border-b-2 ' +
               (tab === t.id
-                ? 'bg-aiesec text-white shadow-glow'
-                : 'bg-white border border-line text-ink-soft hover:border-aiesec/40')
+                ? 'border-aiesec text-aiesec'
+                : 'border-transparent text-ink-soft hover:text-ink')
             }
           >
-            <span>{t.icon}</span>
-            <span className="hidden sm:inline">{t.label}</span>
+            {t.label}
           </button>
         ))}
       </div>
@@ -100,22 +82,21 @@ function ApprovalQueue() {
   if (pending.length === 0)
     return (
       <EmptyState
-        icon={'\u2705'}
         title="All caught up"
-        message="No posts are waiting for review. The queue is clear."
+        message="No posts are waiting for review."
       />
     );
 
   return (
-    <div className="space-y-4 stagger">
+    <div className="space-y-4">
       <p className="text-sm text-ink-soft">
         {pending.length} post{pending.length === 1 ? '' : 's'} exceeded an
         MCP's weekly limit and need a decision.
       </p>
       {pending.map((post) => (
-        <div key={post.id} className="card p-6">
+        <div key={post.id} className="card p-5">
           <div className="flex items-center gap-3">
-            <Avatar name={post.authorName} size={42} />
+            <Avatar name={post.authorName} size={40} />
             <div className="min-w-0">
               <p className="font-display font-extrabold text-ink truncate">
                 {post.authorName}
@@ -125,15 +106,12 @@ function ApprovalQueue() {
                 {timeAgo(post.createdAt)}
               </p>
             </div>
-            <span className="ml-auto text-[11px] font-bold uppercase tracking-wide text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full">
-              Pending
-            </span>
           </div>
 
-          <h3 className="font-display font-extrabold text-lg text-ink mt-4">
+          <h3 className="font-display font-extrabold text-base text-ink mt-3">
             {post.title}
           </h3>
-          <p className="text-sm text-ink-soft mt-1.5 whitespace-pre-wrap leading-relaxed">
+          <p className="text-sm text-ink-soft mt-1 whitespace-pre-wrap leading-relaxed">
             {post.content}
           </p>
           {post.mediaUrl && (
@@ -141,24 +119,24 @@ function ApprovalQueue() {
               href={post.mediaUrl}
               target="_blank"
               rel="noreferrer"
-              className="text-sm font-bold text-aiesec mt-2 inline-block"
+              className="text-sm font-bold text-aiesec mt-1.5 inline-block hover:underline"
             >
               View attachment
             </a>
           )}
 
-          <div className="flex gap-2 mt-5">
+          <div className="flex gap-2 mt-4">
             <button
               onClick={() => decide(post.id, 'approve')}
               disabled={acting === post.id}
-              className="btn-primary px-5 py-2.5 text-sm"
+              className="btn-primary px-5 py-2 text-sm"
             >
-              {acting === post.id ? '...' : 'Approve'}
+              Approve
             </button>
             <button
               onClick={() => decide(post.id, 'reject')}
               disabled={acting === post.id}
-              className="px-5 py-2.5 text-sm font-bold rounded-xl border border-line text-ink-soft hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+              className="px-5 py-2 text-sm font-bold rounded border border-line text-ink-soft hover:text-ink"
             >
               Reject
             </button>
@@ -187,17 +165,11 @@ function McpActivity() {
   if (status === 'error')
     return <ErrorState message="Could not load MCP activity." onRetry={load} />;
   if (rows.length === 0)
-    return (
-      <EmptyState
-        icon={'\u{1F465}'}
-        title="No MCPs yet"
-        message="No MCPs have signed in to the platform so far."
-      />
-    );
+    return <EmptyState title="No MCPs yet" message="No MCPs have signed in so far." />;
 
   return (
-    <div className="card overflow-hidden anim-fade-up">
-      <div className="grid grid-cols-[1.6fr_repeat(4,1fr)] gap-2 px-5 py-3 bg-aiesec-tint text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+    <div className="card overflow-hidden">
+      <div className="grid grid-cols-[1.6fr_repeat(4,1fr)] gap-2 px-4 py-2.5 border-b border-line text-[11px] font-bold uppercase tracking-wide text-ink-soft">
         <span>MCP</span>
         <span className="text-right">Total</span>
         <span className="text-right">Live</span>
@@ -208,21 +180,21 @@ function McpActivity() {
         <div
           key={r.mcpId}
           className={
-            'grid grid-cols-[1.6fr_repeat(4,1fr)] gap-2 px-5 py-3.5 items-center text-sm ' +
-            (i % 2 ? 'bg-white' : 'bg-aiesec-tint/40')
+            'grid grid-cols-[1.6fr_repeat(4,1fr)] gap-2 px-4 py-3 items-center text-sm ' +
+            (i + 1 < rows.length ? 'border-b border-line' : '')
           }
         >
           <div className="flex items-center gap-2.5 min-w-0">
-            <Avatar name={r.mcpName} size={32} />
+            <Avatar name={r.mcpName} size={30} />
             <div className="min-w-0">
               <p className="font-bold text-ink truncate">{r.mcpName}</p>
               <p className="text-xs text-ink-soft truncate">{r.office || '-'}</p>
             </div>
           </div>
           <span className="text-right font-bold text-ink">{r.totalPosts}</span>
-          <span className="text-right text-aiesec font-bold">{r.approvedPosts}</span>
-          <span className="text-right text-amber-600 font-bold">{r.pendingPosts}</span>
-          <span className="text-right text-ink-soft font-bold">{r.rejectedPosts}</span>
+          <span className="text-right font-bold text-ink">{r.approvedPosts}</span>
+          <span className="text-right font-bold text-ink">{r.pendingPosts}</span>
+          <span className="text-right font-bold text-ink">{r.rejectedPosts}</span>
         </div>
       ))}
     </div>
@@ -247,30 +219,24 @@ function AuditLog() {
   if (status === 'error')
     return <ErrorState message="Could not load the audit log." onRetry={load} />;
   if (actions.length === 0)
-    return (
-      <EmptyState
-        icon={'\u{1F4DC}'}
-        title="No actions logged"
-        message="Admin actions will be recorded here as they happen."
-      />
-    );
+    return <EmptyState title="No actions logged" message="Admin actions will appear here." />;
 
   return (
-    <div className="space-y-2.5 stagger">
+    <div className="space-y-2">
       {actions.map((a) => (
-        <div key={a.id} className="card px-5 py-3.5">
+        <div key={a.id} className="card px-4 py-3">
           <div className="flex items-center justify-between gap-3">
-            <span className="font-display font-extrabold text-sm text-aiesec">
+            <span className="font-display font-extrabold text-sm text-ink">
               {a.action}
             </span>
-            <span className="text-xs text-ink-soft/70 shrink-0">
+            <span className="text-xs text-ink-soft shrink-0">
               {timeAgo(a.createdAt)}
             </span>
           </div>
           <p className="text-sm text-ink-soft mt-0.5">
             {a.detail || `${a.targetType} #${a.targetId}`}
           </p>
-          <p className="text-xs text-ink-soft/70 mt-1">by {a.adminName}</p>
+          <p className="text-xs text-ink-soft mt-1">by {a.adminName}</p>
         </div>
       ))}
     </div>

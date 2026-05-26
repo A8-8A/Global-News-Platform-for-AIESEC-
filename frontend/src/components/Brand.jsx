@@ -1,44 +1,16 @@
 // Brand assets as components.
-//
-// The actual image files live in /public/brand/ - official AIESEC
-// assets supplied by the user. Centralising them here means every
-// page references the brand consistently and swapping an asset is
-// a one-line change.
+// Official AIESEC assets live in /public/brand/.
 
-/**
- * The AIESEC wordmark logo.
- * variant: 'blue' (blue on light) | 'mono' uses the same file.
- */
+/** The AIESEC wordmark logo. */
 export function Logo({ className = 'h-7' }) {
   return (
-    <img
-      src="/brand/logo.png"
-      alt="AIESEC"
-      className={className}
-      draggable="false"
-    />
+    <img src="/brand/logo.png" alt="AIESEC" className={className} draggable="false" />
   );
 }
 
 /**
- * The iconic AIESEC "human" walking figure. Used as an accent,
- * loading mark, empty-state illustration and avatar fallback.
- */
-export function Human({ className = 'h-10', float = false }) {
-  return (
-    <img
-      src="/brand/human-blue.png"
-      alt=""
-      aria-hidden="true"
-      draggable="false"
-      className={`${className} ${float ? 'anim-float' : ''}`}
-    />
-  );
-}
-
-/**
- * A circular avatar. AIESEC users have no uploaded photo, so we render
- * their initials on a brand-blue disc - clean and consistent.
+ * Circular avatar with initials on a flat brand-blue disc.
+ * AIESEC users have no uploaded photo, so initials stand in.
  */
 export function Avatar({ name, size = 44 }) {
   const initials = (name || '?')
@@ -51,12 +23,7 @@ export function Avatar({ name, size = 44 }) {
   return (
     <div
       className="flex items-center justify-center rounded-full text-white font-display font-extrabold shrink-0 select-none"
-      style={{
-        width: size,
-        height: size,
-        fontSize: size * 0.4,
-        background: 'linear-gradient(135deg, #037EF3, #024a91)',
-      }}
+      style={{ width: size, height: size, fontSize: size * 0.4, background: '#037EF3' }}
     >
       {initials}
     </div>

@@ -1,15 +1,12 @@
-// OAuth callback page (route "/auth/callback").
-//
-// AIESEC redirects here after sign-in with ?code=<temp code>. We hand
-// that code to our backend, which does the secret-bearing token
-// exchange, calls the GIS API to identify the person + role, and
-// returns our JWT. The secret and the exchange never touch the browser.
+// OAuth callback (route "/auth/callback").
+// AIESEC redirects here with ?code=...; we hand it to the backend,
+// which does the token exchange + role detection and returns our JWT.
 
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { Human } from '../components/Brand';
+import { Spinner } from '../components/ui';
 
 export default function OAuthCallback() {
   const [searchParams] = useSearchParams();
@@ -17,7 +14,7 @@ export default function OAuthCallback() {
   const { completeLogin } = useAuth();
 
   const [error, setError] = useState(null);
-  // React 18 StrictMode runs effects twice in dev; the OAuth code is
+  // React 18 StrictMode runs effects twice in dev; the code is
   // single-use, so guard against a double exchange.
   const exchanged = useRef(false);
 
@@ -51,14 +48,11 @@ export default function OAuthCallback() {
   if (error) {
     return (
       <div className="max-w-md mx-auto px-4 py-16">
-        <div className="card anim-scale-in flex flex-col items-center text-center px-8 py-12">
-          <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center text-3xl mb-4">
-            &#9888;
-          </div>
-          <h1 className="font-display font-black text-xl text-ink">
+        <div className="card p-8 text-center">
+          <h1 className="font-display font-extrabold text-xl text-ink">
             Login failed
           </h1>
-          <p className="mt-2 text-sm text-ink-soft max-w-xs">{error}</p>
+          <p className="mt-2 text-sm text-ink-soft">{error}</p>
           <button
             onClick={() => navigate('/login')}
             className="btn-primary mt-6 px-5 py-2.5 text-sm"
@@ -70,23 +64,5 @@ export default function OAuthCallback() {
     );
   }
 
-  return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center gap-5">
-      <div className="relative w-20 h-20">
-        <div className="absolute inset-0 rounded-full border-4 border-aiesec/15" />
-        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-aiesec anim-spin-slow" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Human className="h-9" />
-        </div>
-      </div>
-      <div className="text-center">
-        <p className="font-display font-extrabold text-lg text-ink">
-          Signing you in
-        </p>
-        <p className="text-sm text-ink-soft mt-0.5">
-          Verifying your AIESEC account...
-        </p>
-      </div>
-    </div>
-  );
+  return <Spinner label="Signing you in..." />;
 }
