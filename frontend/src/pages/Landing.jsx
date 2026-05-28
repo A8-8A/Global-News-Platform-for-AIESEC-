@@ -350,30 +350,18 @@ function LandingCTA({ onSignIn, onReadFeed }) {
 /* ---------- Footer ---------- */
 function LandingFooter() {
   return (
-    <footer className="bg-paper border-t border-line px-6 sm:px-14" style={{ padding: '48px 56px 32px' }}>
-      <div className="mx-auto max-w-feed grid grid-cols-1 md:grid-cols-[1.4fr_1fr_1fr_1fr] gap-10" style={{ paddingBottom: 32, borderBottom: '1px solid var(--line)' }}>
-        <div className="flex flex-col gap-3.5">
+    <footer className="bg-paper border-t border-line" style={{ padding: '40px 56px' }}>
+      <div className="mx-auto max-w-feed flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3">
           <Logo height={22} />
-          <p className="font-sans text-ink-soft" style={{ fontSize: 13, lineHeight: 1.55, maxWidth: 280 }}>
+          <p className="font-sans text-ink-soft" style={{ fontSize: 13, lineHeight: 1.55, maxWidth: 320 }}>
             An internal publication of the AIESEC network. Filed by 120 Member Committee Presidents. Read everywhere.
           </p>
         </div>
-        {[
-          { h: 'The desk', items: ['Feed', 'Global map', 'Entities', 'Search archive'] },
-          { h: 'About', items: ['Masthead', 'Editorial principles', 'How to pitch', 'Contact'] },
-          { h: 'Network', items: ['AIESEC.org', 'EXPA login', 'Press', 'Privacy'] },
-        ].map((col) => (
-          <div key={col.h} className="flex flex-col gap-3">
-            <span className="font-sans font-bold uppercase text-ink" style={{ fontSize: 11, letterSpacing: '0.16em' }}>{col.h}</span>
-            {col.items.map((i) => (
-              <span key={i} className="font-sans text-ink-soft cursor-pointer hover:text-ink" style={{ fontSize: 13 }}>{i}</span>
-            ))}
-          </div>
-        ))}
-      </div>
-      <div className="mx-auto max-w-feed flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center font-sans text-ink-faint" style={{ paddingTop: 24, fontSize: 12 }}>
-        <span>© 2026 AIESEC International. All bylines belong to their authors.</span>
-        <span className="font-mono" style={{ letterSpacing: '0.14em' }}>VOL. I · ISS. 001</span>
+        <div className="flex flex-col items-start sm:items-end gap-1 font-sans text-ink-faint" style={{ fontSize: 12 }}>
+          <span>© 2026 AIESEC International. All bylines belong to their authors.</span>
+          <span className="font-mono" style={{ letterSpacing: '0.14em' }}>VOL. I · ISS. 001</span>
+        </div>
       </div>
     </footer>
   );

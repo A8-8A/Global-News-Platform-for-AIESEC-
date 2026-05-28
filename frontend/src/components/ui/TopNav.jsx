@@ -13,9 +13,6 @@ import { SearchIcon } from './Icon';
 
 const NAV_ITEMS = [
   { id: 'feed', label: 'Feed', to: '/feed' },
-  { id: 'global', label: 'Global map', to: '/feed' },
-  { id: 'offices', label: 'Entities', to: '/feed' },
-  { id: 'about', label: 'About', to: '/' },
 ];
 
 export function TopNav({ active = 'feed' }) {

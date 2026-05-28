@@ -29,12 +29,6 @@ export default function Layout() {
             <Logo height={18} />
             <span>· an internal publication of the AIESEC network</span>
           </div>
-          <div className="flex gap-[22px]">
-            <span className="cursor-pointer hover:text-ink-soft">Style guide</span>
-            <span className="cursor-pointer hover:text-ink-soft">Press</span>
-            <span className="cursor-pointer hover:text-ink-soft">Privacy</span>
-            <span className="cursor-pointer hover:text-ink-soft">RSS</span>
-          </div>
         </div>
       </footer>
     </div>

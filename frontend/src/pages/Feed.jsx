@@ -12,7 +12,7 @@ import { FeedSkeleton } from '../components/ui/states';
 import { ArrowIcon } from '../components/ui/Icon';
 import { useNavigate } from 'react-router-dom';
 
-const TABS = ['Latest', 'For you', 'Following'];
+const TABS = ['Latest'];
 
 function todayEyebrow() {
   try {
