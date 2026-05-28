@@ -1,200 +1,119 @@
-// A single post in the feed.
-//
-// Interactive: like button hits POST /api/posts/{id}/like; comments
-// expand inline and post to /api/posts/{id}/comments. Engagement is
-// optimistic - UI updates first, then reconciles with the server.
-// Static styling - no animation.
+// Feed post cards. FeaturePost is the big 1:1.2 photo+text hero;
+// PostRow is the standard list row. Both translated from
+// screens-feed.jsx and bound to the real post JSON shape:
+//   { id, title, content, excerpt, mediaUrl, tag, status, authorName,
+//     authorOffice, officeCode, likeCount, commentCount, likedByMe,
+//     createdAt }
+// officeCode is not sent by the backend yet, so OfficeTag guards on it.
 
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { api } from '../api/client';
-import { useAuth } from '../context/AuthContext';
-import { Avatar } from './Brand';
-import { timeAgo } from './ui';
+import { Link } from 'react-router-dom';
+import { Photo } from './ui/Photo';
+import { Pill } from './ui/Pill';
+import { OfficeTag } from './ui/OfficeTag';
+import { Avatar } from './ui/Avatar';
+import { HeartIcon, CommentIcon } from './ui/Icon';
+import { timeAgo, excerptOf } from './ui/states';
 
-export default function PostCard({ post }) {
-  const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
+function authorRole(post) {
+  return post.authorOffice || '';
+}
 
-  const [liked, setLiked] = useState(!!post.likedByMe);
-  const [likeCount, setLikeCount] = useState(post.likeCount ?? 0);
-  const [busyLike, setBusyLike] = useState(false);
-
-  const [showComments, setShowComments] = useState(false);
-  const [comments, setComments] = useState(null);
-  const [commentCount, setCommentCount] = useState(post.commentCount ?? 0);
-  const [draft, setDraft] = useState('');
-  const [posting, setPosting] = useState(false);
-
-  async function toggleLike() {
-    if (!isAuthenticated) { navigate('/login'); return; }
-    if (busyLike) return;
-    setBusyLike(true);
-
-    const next = !liked;
-    setLiked(next);
-    setLikeCount((c) => c + (next ? 1 : -1));
-
-    try {
-      const res = await api.post(`/api/posts/${post.id}/like`);
-      setLiked(res.liked);
-      setLikeCount(res.likeCount);
-    } catch {
-      setLiked(!next);
-      setLikeCount((c) => c + (next ? -1 : 1));
-    } finally {
-      setBusyLike(false);
-    }
-  }
-
-  async function openComments() {
-    const opening = !showComments;
-    setShowComments(opening);
-    if (opening && comments === null) {
-      try {
-        const detail = await api.get(`/api/feed/${post.id}`);
-        setComments(detail.comments || []);
-        setCommentCount((detail.comments || []).length);
-      } catch {
-        setComments([]);
-      }
-    }
-  }
-
-  async function submitComment() {
-    if (!isAuthenticated) { navigate('/login'); return; }
-    const text = draft.trim();
-    if (!text || posting) return;
-    setPosting(true);
-    try {
-      const created = await api.post(`/api/posts/${post.id}/comments`, {
-        content: text,
-      });
-      setComments((cs) => [...(cs || []), created]);
-      setCommentCount((c) => c + 1);
-      setDraft('');
-    } catch {
-      /* keep draft for retry */
-    } finally {
-      setPosting(false);
-    }
-  }
-
+export function FeaturePost({ post }) {
+  const excerpt = post.excerpt || excerptOf(post.content);
   return (
-    <article className="card overflow-hidden">
-      {/* header */}
-      <div className="flex items-center gap-3 px-5 pt-5">
-        <Avatar name={post.authorName} size={44} />
-        <div className="min-w-0">
-          <p className="font-display font-extrabold text-ink leading-tight truncate">
-            {post.authorName || 'AIESEC'}
-          </p>
-          <p className="text-xs text-ink-soft truncate">
-            {post.authorOffice ? `${post.authorOffice} - ` : ''}
-            {timeAgo(post.createdAt)}
-          </p>
+    <article className="grid grid-cols-1 md:grid-cols-[1fr_1.2fr] gap-12 items-start pb-12">
+      <Link to={`/feed/${post.id}`} className="block">
+        <Photo
+          src={post.mediaUrl}
+          subject={post.photoSubject}
+          tone={post.photo || 'sky'}
+          ratio="4 / 5"
+          style={{ borderRadius: 4 }}
+        />
+      </Link>
+
+      <div className="flex flex-col gap-5 pt-1">
+        <div className="flex items-center gap-2.5">
+          {post.tag && <Pill tone="solid" size="sm">{post.tag}</Pill>}
+          {post.officeCode && <OfficeTag code={post.officeCode} mode="chip" />}
+        </div>
+
+        <Link to={`/feed/${post.id}`} className="no-underline">
+          <h2 className="display" style={{ fontSize: 38, color: 'var(--ink)', lineHeight: 1.05 }}>
+            {post.title}
+          </h2>
+        </Link>
+
+        <p className="font-sans text-ink-soft" style={{ fontSize: 17, lineHeight: 1.55, maxWidth: '52ch' }}>
+          {excerpt}
+        </p>
+
+        <div className="flex items-center gap-3 mt-2">
+          <Avatar name={post.authorName} size={36} />
+          <div className="flex flex-col">
+            <span className="font-sans font-bold text-ink" style={{ fontSize: 13 }}>{post.authorName}</span>
+            <span className="font-sans text-ink-faint" style={{ fontSize: 12 }}>
+              {authorRole(post)}{authorRole(post) ? ' · ' : ''}{timeAgo(post.createdAt)}
+            </span>
+          </div>
+          <div className="ml-auto flex items-center gap-[18px] text-ink-soft font-sans" style={{ fontSize: 12 }}>
+            <span className="inline-flex items-center gap-1.5"><HeartIcon />{post.likeCount ?? 0}</span>
+            <span className="inline-flex items-center gap-1.5"><CommentIcon />{post.commentCount ?? 0}</span>
+          </div>
         </div>
       </div>
+    </article>
+  );
+}
 
-      {/* body */}
-      <div className="px-5 pt-3">
-        <h2 className="font-display font-extrabold text-lg text-ink leading-snug">
-          {post.title}
-        </h2>
-        <p className="mt-1.5 text-[15px] text-ink-soft leading-relaxed whitespace-pre-wrap">
-          {post.content}
-        </p>
-        {post.mediaUrl && (
-          <a
-            href={post.mediaUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-2 inline-block text-sm font-bold text-aiesec hover:underline"
-          >
-            View attachment
-          </a>
-        )}
-      </div>
-
-      {/* counts */}
-      {(likeCount > 0 || commentCount > 0) && (
-        <div className="px-5 mt-3 flex items-center gap-3 text-xs text-ink-soft">
-          {likeCount > 0 && <span>{likeCount} like{likeCount === 1 ? '' : 's'}</span>}
-          {commentCount > 0 && (
-            <span>{commentCount} comment{commentCount === 1 ? '' : 's'}</span>
+export function PostRow({ post }) {
+  const excerpt = post.excerpt || excerptOf(post.content);
+  const hasPhoto = !!(post.mediaUrl || post.photo);
+  return (
+    <article
+      className={`grid gap-8 items-start py-8 border-t border-line ${
+        hasPhoto ? 'grid-cols-1 md:grid-cols-[1fr_240px]' : 'grid-cols-1'
+      }`}
+    >
+      <div className="flex flex-col gap-3 min-w-0">
+        <div className="flex items-center gap-2.5">
+          {post.officeCode && <OfficeTag code={post.officeCode} mode="chip" />}
+          {post.tag && (
+            <span className="font-sans font-bold text-accent-deep" style={{ fontSize: 11, letterSpacing: '0.1em' }}>
+              {post.tag}
+            </span>
           )}
         </div>
-      )}
 
-      {/* action bar */}
-      <div className="mt-3 px-2 py-1 border-t border-line flex">
-        <button
-          onClick={toggleLike}
-          className={
-            'flex-1 py-2.5 rounded text-sm font-bold ' +
-            (liked ? 'text-aiesec' : 'text-ink-soft hover:bg-[#f4f9ff]')
-          }
-        >
-          {liked ? 'Liked' : 'Like'}
-        </button>
-        <button
-          onClick={openComments}
-          className={
-            'flex-1 py-2.5 rounded text-sm font-bold ' +
-            (showComments ? 'text-aiesec' : 'text-ink-soft hover:bg-[#f4f9ff]')
-          }
-        >
-          Comment
-        </button>
+        <Link to={`/feed/${post.id}`} className="no-underline">
+          <h3 className="display" style={{ fontSize: 26, color: 'var(--ink)', fontWeight: 700 }}>
+            {post.title}
+          </h3>
+        </Link>
+
+        <p className="font-sans text-ink-soft" style={{ fontSize: 14, lineHeight: 1.55, maxWidth: '60ch' }}>
+          {excerpt}
+        </p>
+
+        <div className="flex items-center gap-3 mt-1.5 font-sans text-ink-faint" style={{ fontSize: 12 }}>
+          <Avatar name={post.authorName} size={22} />
+          <span className="text-ink font-bold">{post.authorName}</span>
+          <span>·</span>
+          <span>{timeAgo(post.createdAt)}</span>
+          <span className="ml-auto inline-flex gap-4 text-ink-soft">
+            <span className="inline-flex items-center gap-1.5"><HeartIcon />{post.likeCount ?? 0}</span>
+            <span className="inline-flex items-center gap-1.5"><CommentIcon />{post.commentCount ?? 0}</span>
+          </span>
+        </div>
       </div>
 
-      {/* comments */}
-      {showComments && (
-        <div className="border-t border-line px-5 py-4 bg-white">
-          <div className="flex gap-2">
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && submitComment()}
-              placeholder={isAuthenticated ? 'Write a comment' : 'Log in to comment'}
-              disabled={!isAuthenticated || posting}
-              className="flex-1 border border-line rounded px-3 py-2 text-sm outline-none focus:border-aiesec"
-            />
-            <button
-              onClick={submitComment}
-              disabled={!isAuthenticated || posting || !draft.trim()}
-              className="btn-primary px-4 py-2 text-sm"
-            >
-              Send
-            </button>
-          </div>
-
-          <div className="mt-4 space-y-3">
-            {comments === null && (
-              <p className="text-sm text-ink-soft">Loading comments...</p>
-            )}
-            {comments !== null && comments.length === 0 && (
-              <p className="text-sm text-ink-soft py-1">
-                No comments yet.
-              </p>
-            )}
-            {comments?.map((c) => (
-              <div key={c.id} className="flex gap-2.5">
-                <Avatar name={c.authorName} size={32} />
-                <div className="border border-line rounded px-3 py-2 flex-1">
-                  <p className="text-xs font-bold text-ink">
-                    {c.authorName}
-                    <span className="text-ink-soft font-normal ml-2">
-                      {timeAgo(c.createdAt)}
-                    </span>
-                  </p>
-                  <p className="text-sm text-ink-soft mt-0.5">{c.content}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      {hasPhoto && (
+        <Link to={`/feed/${post.id}`} className="block">
+          <Photo src={post.mediaUrl} tone={post.photo || 'sky'} ratio="4 / 3" style={{ borderRadius: 4 }} />
+        </Link>
       )}
     </article>
   );
 }
+
+export default PostRow;

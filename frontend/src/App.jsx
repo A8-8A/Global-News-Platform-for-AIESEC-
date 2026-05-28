@@ -1,16 +1,15 @@
 // Top-level route table.
 //
 // Route map:
-//   /                 Landing        public - intro + previews, pre-login
-//   /feed             Feed           public - the news feed (approved posts)
-//   /login            Login          public - "Login with AIESEC"
-//   /auth/callback    OAuthCallback  public - OAuth redirect lands here
-//   /compose          ComposePost    MCP only
-//   /admin/login      AdminLogin     public
-//   /admin            AdminDashboard ADMIN only
-//
-// Landing sits OUTSIDE <Layout> - it has its own full-bleed chrome.
-// Everything else renders inside the shared app shell.
+//   /                 Landing           public, full-bleed (own nav)
+//   /feed             Feed              public (approved posts)
+//   /feed/:id         PostDetail        public (article + comments)
+//   /login            Login             public — "Sign in with EXPA"
+//   /auth/callback    OAuthCallback     public — OAuth redirect lands here
+//   /compose          ComposePost       MCP only
+//   /admin/login      AdminLogin        public, full-bleed
+//   /admin            AdminDashboard    ADMIN only, full-bleed (own chrome)
+//   *                 NotFound          inside Layout
 
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
@@ -18,6 +17,7 @@ import ProtectedRoute from './routes/ProtectedRoute';
 
 import Landing from './pages/Landing';
 import Feed from './pages/Feed';
+import PostDetail from './pages/PostDetail';
 import Login from './pages/Login';
 import OAuthCallback from './pages/OAuthCallback';
 import ComposePost from './pages/ComposePost';
@@ -28,16 +28,24 @@ import NotFound from './pages/NotFound';
 export default function App() {
   return (
     <Routes>
-      {/* Standalone landing page - own layout */}
+      {/* Full-bleed routes — outside the shared Layout chrome */}
       <Route path="/" element={<Landing />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/auth/callback" element={<OAuthCallback />} />
+      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute role="ADMIN">
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
 
-      {/* App shell for everything else */}
+      {/* Inside the shared Layout (top nav + footer) */}
       <Route element={<Layout />}>
         <Route path="/feed" element={<Feed />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/auth/callback" element={<OAuthCallback />} />
-        <Route path="/admin/login" element={<AdminLogin />} />
-
+        <Route path="/feed/:id" element={<PostDetail />} />
         <Route
           path="/compose"
           element={
@@ -46,15 +54,6 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute role="ADMIN">
-              <AdminDashboard />
-            </ProtectedRoute>
-          }
-        />
-
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
