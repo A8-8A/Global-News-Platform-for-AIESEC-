@@ -148,19 +148,27 @@ function AvatarUploader({ currentSrc, name, userId, onUploaded }) {
 /* ── Main page ─────────────────────────────────────────────────── */
 export default function ProfilePage() {
   const { id } = useParams();           // "me" or a numeric user id
-  const { user: me, completeLogin } = useAuth();
+  const { user: me, loading: authLoading, completeLogin } = useAuth();
   const navigate = useNavigate();
 
   // Resolve "me" to the real user id so the query key is stable.
   const resolvedId = id === 'me' ? me?.id : id;
   const isOwnProfile = id === 'me' || (me && String(me.id) === String(id));
 
-  const { data, isLoading, isError, refetch } = useProfile(resolvedId ?? 'me');
+  const { data, isLoading, isError, refetch } = useProfile(resolvedId);
   const updateProfile = useUpdateProfile();
 
   const [editingBio, setEditingBio] = useState(false);
   const [bioDraft, setBioDraft] = useState('');
   const [toast, setToast] = useState(null);
+
+  // While auth is still resolving for "/profile/me", show the spinner
+  // rather than the error or sign-in states - the id will resolve shortly.
+  if (id === 'me' && authLoading) return (
+    <div className="mx-auto max-w-article px-10 py-20 flex items-center gap-3 text-ink-soft">
+      <Spinner /> Resolving your profile…
+    </div>
+  );
 
   // Require login to view own profile.
   if (id === 'me' && !me) {
