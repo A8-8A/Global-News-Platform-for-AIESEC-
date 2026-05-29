@@ -100,15 +100,15 @@ public class AuthService {
         String officeId   = office != null ? office.id()   : null;
         String officeName = office != null ? office.name() : null;
 
-        // Role title from first current position
-        String roleTitle = null;
-        if (person.current_positions() != null && !person.current_positions().isEmpty()) {
-            roleTitle = person.current_positions().get(0).title();
-        }
+        // Role title from first current position — final for lambda capture
+        final String roleTitle = (person.current_positions() != null
+                && !person.current_positions().isEmpty())
+                ? person.current_positions().get(0).title()
+                : null;
 
         // EXPA profile photo — only use as initial value; don't overwrite
         // a Firebase photo the user has already set.
-        String expaPhoto = person.profile_photo();
+        final String expaPhoto = person.profile_photo();
 
         return userRepository.findByAiesecPersonId(person.id())
                 .map(existing -> {
