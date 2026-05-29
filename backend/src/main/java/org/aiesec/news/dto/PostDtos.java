@@ -26,7 +26,13 @@ public final class PostDtos {
             String content,
 
             @Size(max = 1024, message = "Media URL is too long")
-            String mediaUrl
+            String mediaUrl,
+
+            @Size(max = 512, message = "Excerpt is too long")
+            String excerpt,
+
+            @Size(max = 64, message = "Tag is too long")
+            String tag
     ) {
     }
 
@@ -40,18 +46,24 @@ public final class PostDtos {
     // --- responses ---
 
     /**
-     * A post as shown in the feed. Carries author identity, engagement
-     * counts, and - when the request is authenticated - whether the
-     * current user has liked it.
+     * A post as shown in the feed. Carries author identity (including
+     * authorId and authorPhotoUrl so the frontend can link to the
+     * author's profile and show their real avatar), engagement counts,
+     * and - when the request is authenticated - whether the current
+     * user has liked it.
      */
     public record PostResponse(
             Long id,
             String title,
             String content,
+            String excerpt,
+            String tag,
             String mediaUrl,
             String status,
+            Long authorId,
             String authorName,
             String authorOffice,
+            String authorPhotoUrl,
             long likeCount,
             long commentCount,
             boolean likedByMe,
@@ -66,11 +78,17 @@ public final class PostDtos {
     ) {
     }
 
-    /** A comment under a post. */
+    /**
+     * A comment under a post. Includes authorId and authorPhotoUrl
+     * so comment author names/avatars are clickable profile links.
+     */
     public record CommentResponse(
             Long id,
             String content,
+            Long authorId,
             String authorName,
+            String authorOffice,
+            String authorPhotoUrl,
             Instant createdAt
     ) {
     }

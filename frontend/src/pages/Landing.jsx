@@ -185,46 +185,7 @@ function LandingHow() {
           ))}
         </div>
 
-        <div style={{ marginTop: 64 }}>
-          <RuleLabel right="the post lifecycle">From the desk to the feed</RuleLabel>
-          <div className="bg-white border border-line rounded-md flex flex-col lg:flex-row lg:items-center gap-6 lg:gap-4" style={{ marginTop: 24, padding: '36px 28px' }}>
-            {[
-              { n: '01', label: 'MCP writes', sub: 'title + body + media' },
-              { n: '02', label: 'Within 2/wk?', sub: 'weekly counter' },
-            ].map((s) => (
-              <div key={s.n} className="flex items-center gap-4 lg:flex-1">
-                <div className="flex flex-col gap-1.5">
-                  <span className="font-mono font-bold text-accent" style={{ fontSize: 10, letterSpacing: '0.16em' }}>STEP {s.n}</span>
-                  <span className="display" style={{ fontSize: 18, color: 'var(--ink)', fontWeight: 700, lineHeight: 1.15 }}>{s.label}</span>
-                  <span className="font-sans text-ink-faint" style={{ fontSize: 11 }}>{s.sub}</span>
-                </div>
-                <span className="text-ink-faint hidden lg:flex"><ArrowIcon /></span>
-              </div>
-            ))}
 
-            <div className="flex flex-col gap-3.5 lg:flex-1">
-              <div className="flex items-center gap-2 rounded-md font-sans font-bold text-accent-deep" style={{ padding: '10px 14px', background: 'var(--accent-soft)', border: '1px solid var(--accent-light)', fontSize: 12 }}>
-                <span className="text-accent"><CheckIcon /></span> YES — publish immediately
-              </div>
-              <div className="flex items-center gap-2 rounded-md font-sans font-bold" style={{ padding: '10px 14px', background: 'rgba(184,134,11,0.10)', border: '1px solid rgba(184,134,11,0.3)', color: '#7A5A0E', fontSize: 12 }}>
-                <span>⚠</span> OVER — admin queue
-              </div>
-            </div>
-
-            <span className="text-ink-faint hidden lg:flex"><ArrowIcon /></span>
-
-            <div className="flex flex-col gap-1.5 lg:flex-1">
-              <span className="font-mono font-bold text-accent" style={{ fontSize: 10, letterSpacing: '0.16em' }}>STEP 03</span>
-              <span className="display" style={{ fontSize: 18, color: 'var(--ink)', fontWeight: 700, lineHeight: 1.15 }}>Member feed</span>
-              <span className="font-sans text-ink-faint" style={{ fontSize: 11 }}>latest first · all entities</span>
-            </div>
-            <div className="flex flex-col gap-1.5 lg:flex-1">
-              <span className="font-mono font-bold text-accent" style={{ fontSize: 10, letterSpacing: '0.16em' }}>STEP 04</span>
-              <span className="display" style={{ fontSize: 18, color: 'var(--ink)', fontWeight: 700, lineHeight: 1.15 }}>Members engage</span>
-              <span className="font-sans text-ink-faint" style={{ fontSize: 11 }}>likes · comments</span>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
   );

@@ -31,14 +31,21 @@ public final class AuthDtos {
     ) {
     }
 
-    /** The user info the frontend needs (also returned by /api/auth/me). */
+    /**
+     * The user info the frontend needs (also returned by /api/auth/me).
+     *
+     * photoUrl is included so the TopNav avatar shows the real photo
+     * immediately after login without a separate /api/users/:id call.
+     */
     public record UserProfile(
             Long id,
             String role,
             String fullName,
             String email,
             String officeId,
-            String officeName
+            String officeName,
+            String photoUrl,
+            String roleTitle
     ) {
     }
 }

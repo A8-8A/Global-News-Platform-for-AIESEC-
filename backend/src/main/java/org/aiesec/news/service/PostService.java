@@ -78,6 +78,8 @@ public class PostService {
         post.setAuthor(author);
         post.setTitle(request.title());
         post.setContent(request.content());
+        post.setExcerpt(emptyToNull(request.excerpt()));
+        post.setTag(emptyToNull(request.tag()));
         post.setMediaUrl(emptyToNull(request.mediaUrl()));
         post.setStatus(status);
 
@@ -197,10 +199,14 @@ public class PostService {
                 post.getId(),
                 post.getTitle(),
                 post.getContent(),
+                post.getExcerpt(),
+                post.getTag(),
                 post.getMediaUrl(),
                 post.getStatus().name(),
+                author.getId(),
                 author.getFullName(),
                 author.getOfficeName(),
+                author.getPhotoUrl(),
                 likeRepository.countByPostId(post.getId()),
                 commentRepository.countByPostId(post.getId()),
                 likedByMe,
@@ -208,10 +214,14 @@ public class PostService {
     }
 
     private static CommentResponse toCommentResponse(Comment c) {
+        User author = c.getAuthor();
         return new CommentResponse(
                 c.getId(),
                 c.getContent(),
-                c.getAuthor().getFullName(),
+                author.getId(),
+                author.getFullName(),
+                author.getOfficeName(),
+                author.getPhotoUrl(),
                 c.getCreatedAt());
     }
 

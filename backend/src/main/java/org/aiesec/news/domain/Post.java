@@ -10,6 +10,9 @@ import java.time.Instant;
 /**
  * A news post. Created only by MCPs (enforced in the service layer).
  * {@link #status} controls whether it appears in the public feed.
+ *
+ * V2 adds: excerpt (standfirst) and tag (editorial category).
+ * These require V2 Flyway migration columns.
  */
 @Entity
 @Table(name = "posts")
@@ -32,6 +35,14 @@ public class Post {
 
     @Column(nullable = false, columnDefinition = "text")
     private String content;
+
+    /** Short standfirst shown on the feed card. Optional. */
+    @Column(length = 512)
+    private String excerpt;
+
+    /** Editorial tag e.g. CONGRESS, GROWTH. Optional. */
+    @Column(length = 64)
+    private String tag;
 
     @Column(name = "media_url", length = 1024)
     private String mediaUrl;

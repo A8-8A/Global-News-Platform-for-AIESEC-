@@ -1,7 +1,6 @@
 // Sticky public top nav. Role-aware: shows "Write" for MCPs, an Avatar
-// for any signed-in user, or a "Sign in" button for guests. The search
-// button toggles a simple inline search drawer. Translated from the
-// TopNav atom in ds-atoms.jsx and wired to the router + AuthContext.
+// for any signed-in user, or a "Sign in" button for guests.
+// Avatar click → /profile/me (own profile). Admin goes to /admin.
 
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -27,7 +26,7 @@ export function TopNav({ active = 'feed' }) {
     >
       <div className="mx-auto max-w-feed px-10 h-[72px] flex items-center justify-between gap-6">
         <div className="flex items-center gap-10">
-          <Link to="/feed" aria-label="AIESEC News home">
+          <Link to="/" aria-label="AIESEC News home">
             <Logo height={22} />
           </Link>
           <nav className="hidden md:flex items-center gap-1.5">
@@ -69,13 +68,18 @@ export function TopNav({ active = 'feed' }) {
                   Write
                 </Btn>
               )}
+              {/* Avatar → own profile (admins go to /admin) */}
               <button
                 type="button"
-                onClick={() => navigate(user.role === 'ADMIN' ? '/admin' : '/feed')}
-                aria-label="Account"
+                onClick={() => navigate(user.role === 'ADMIN' ? '/admin' : '/profile/me')}
+                aria-label="Your profile"
                 className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
-                <Avatar name={user.fullName || user.name} size={36} />
+                <Avatar
+                  name={user.fullName || user.name}
+                  src={user.photoUrl || undefined}
+                  size={36}
+                />
               </button>
             </div>
           ) : (
@@ -95,9 +99,7 @@ export function TopNav({ active = 'feed' }) {
               placeholder="Search the desk — entity, author, headline…"
               className="flex-1 h-9 bg-transparent border-none outline-none font-sans text-ink"
               style={{ fontSize: 14 }}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') setSearchOpen(false);
-              }}
+              onKeyDown={(e) => { if (e.key === 'Escape') setSearchOpen(false); }}
             />
             <button
               type="button"

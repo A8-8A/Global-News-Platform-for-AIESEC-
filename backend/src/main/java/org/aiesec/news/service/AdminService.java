@@ -9,23 +9,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-/**
- * Admin moderation logic.
- *
- * Capabilities (from the spec):
- *  - view the approval queue (posts that exceeded an MCP's weekly limit)
- *  - approve a queued post  -> it becomes visible in the feed
- *  - reject a queued post   -> implementation decision: we mark it
- *    REJECTED (kept, visible to its author) rather than hard-deleting,
- *    so the MCP can see what happened.
- *  - delete a post or a comment (remove inappropriate content)
- *  - view an MCP's posting activity
- *  - view the audit log
- *
- * EVERY state-changing action writes an AdminAction row. The spec
- * requires all admin actions to be logged; doing it here (not in the
- * controller) means the log can never be bypassed.
- */
 @Service
 public class AdminService {
 
@@ -44,11 +27,6 @@ public class AdminService {
         this.adminActionRepository = adminActionRepository;
     }
 
-    // ----------------------------------------------------------------
-    // Approval queue
-    // ----------------------------------------------------------------
-
-    /** Posts awaiting a decision - oldest first (fairest to review). */
     @Transactional(readOnly = true)
     public List<PendingPostResponse> getPendingPosts() {
         return postRepository
@@ -57,35 +35,22 @@ public class AdminService {
                 .toList();
     }
 
-    /** Approve a queued post: it becomes APPROVED and enters the feed. */
     @Transactional
     public void approvePost(Long adminId, Long postId) {
         Post post = requirePost(postId);
         post.setStatus(PostStatus.APPROVED);
         postRepository.save(post);
-        log(adminId, "APPROVE_POST", "POST", postId,
-                "Approved post: " + post.getTitle());
+        log(adminId, "APPROVE_POST", "POST", postId, "Approved post: " + post.getTitle());
     }
 
-    /**
-     * Reject a queued post. We mark it REJECTED rather than deleting it,
-     * so the authoring MCP can still see the outcome (it shows in their
-     * /api/posts/mine list, never in the public feed).
-     */
     @Transactional
     public void rejectPost(Long adminId, Long postId) {
         Post post = requirePost(postId);
         post.setStatus(PostStatus.REJECTED);
         postRepository.save(post);
-        log(adminId, "REJECT_POST", "POST", postId,
-                "Rejected post: " + post.getTitle());
+        log(adminId, "REJECT_POST", "POST", postId, "Rejected post: " + post.getTitle());
     }
 
-    // ----------------------------------------------------------------
-    // Content removal
-    // ----------------------------------------------------------------
-
-    /** Delete a post outright (comments + likes cascade in the DB). */
     @Transactional
     public void deletePost(Long adminId, Long postId) {
         Post post = requirePost(postId);
@@ -94,21 +59,14 @@ public class AdminService {
         log(adminId, "DELETE_POST", "POST", postId, "Deleted post: " + title);
     }
 
-    /** Delete an inappropriate comment. */
     @Transactional
     public void deleteComment(Long adminId, Long commentId) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new NotFoundException("Comment not found."));
         commentRepository.delete(comment);
-        log(adminId, "DELETE_COMMENT", "COMMENT", commentId,
-                "Deleted a comment");
+        log(adminId, "DELETE_COMMENT", "COMMENT", commentId, "Deleted a comment");
     }
 
-    // ----------------------------------------------------------------
-    // Visibility: MCP activity + audit log
-    // ----------------------------------------------------------------
-
-    /** Posting-activity summary for every MCP. */
     @Transactional(readOnly = true)
     public List<McpActivityResponse> getMcpActivity() {
         return userRepository.findByRole(Role.MCP).stream()
@@ -116,6 +74,7 @@ public class AdminService {
                         mcp.getId(),
                         mcp.getFullName(),
                         mcp.getOfficeName(),
+                        mcp.getPhotoUrl(),
                         postRepository.countByAuthorId(mcp.getId()),
                         postRepository.countByAuthorIdAndStatus(mcp.getId(), PostStatus.APPROVED),
                         postRepository.countByAuthorIdAndStatus(mcp.getId(), PostStatus.PENDING),
@@ -123,7 +82,6 @@ public class AdminService {
                 .toList();
     }
 
-    /** The full audit trail, newest first. */
     @Transactional(readOnly = true)
     public List<AdminActionResponse> getAuditLog() {
         return adminActionRepository.findAllByOrderByCreatedAtDesc().stream()
@@ -138,11 +96,6 @@ public class AdminService {
                 .toList();
     }
 
-    // ----------------------------------------------------------------
-    // internals
-    // ----------------------------------------------------------------
-
-    /** Write one audit-log row. Called by every state-changing action. */
     private void log(Long adminId, String action, String targetType,
                      Long targetId, String detail) {
         User admin = userRepository.findById(adminId)
@@ -157,13 +110,18 @@ public class AdminService {
     }
 
     private static PendingPostResponse toPendingResponse(Post p) {
+        User author = p.getAuthor();
         return new PendingPostResponse(
                 p.getId(),
                 p.getTitle(),
                 p.getContent(),
+                p.getExcerpt(),
+                p.getTag(),
                 p.getMediaUrl(),
-                p.getAuthor().getFullName(),
-                p.getAuthor().getOfficeName(),
+                author.getId(),
+                author.getFullName(),
+                author.getOfficeName(),
+                author.getPhotoUrl(),
                 p.getCreatedAt());
     }
 }

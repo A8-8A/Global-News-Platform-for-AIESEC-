@@ -7,6 +7,8 @@
 //   /login            Login             public — "Sign in with EXPA"
 //   /auth/callback    OAuthCallback     public — OAuth redirect lands here
 //   /compose          ComposePost       MCP only
+//   /profile/me       ProfilePage       own profile (auth required)
+//   /profile/:id      ProfilePage       any member's profile (public)
 //   /admin/login      AdminLogin        public, full-bleed
 //   /admin            AdminDashboard    ADMIN only, full-bleed (own chrome)
 //   *                 NotFound          inside Layout
@@ -21,6 +23,7 @@ import PostDetail from './pages/PostDetail';
 import Login from './pages/Login';
 import OAuthCallback from './pages/OAuthCallback';
 import ComposePost from './pages/ComposePost';
+import ProfilePage from './pages/ProfilePage';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import NotFound from './pages/NotFound';
@@ -54,6 +57,8 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/profile/me" element={<ProfilePage />} />
+        <Route path="/profile/:id" element={<ProfilePage />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

@@ -1,10 +1,11 @@
 // Feed post cards. FeaturePost is the big 1:1.2 photo+text hero;
-// PostRow is the standard list row. Both translated from
-// screens-feed.jsx and bound to the real post JSON shape:
-//   { id, title, content, excerpt, mediaUrl, tag, status, authorName,
-//     authorOffice, officeCode, likeCount, commentCount, likedByMe,
-//     createdAt }
-// officeCode is not sent by the backend yet, so OfficeTag guards on it.
+// PostRow is the standard list row. Author avatar + name are clickable
+// links to /profile/:authorId so readers can view any MCP's profile.
+//
+// Post shape:
+//   { id, title, content, excerpt, mediaUrl, tag, status, authorId,
+//     authorName, authorOffice, authorPhotoUrl, officeCode,
+//     likeCount, commentCount, likedByMe, createdAt }
 
 import { Link } from 'react-router-dom';
 import { Photo } from './ui/Photo';
@@ -14,8 +15,42 @@ import { Avatar } from './ui/Avatar';
 import { HeartIcon, CommentIcon } from './ui/Icon';
 import { timeAgo, excerptOf } from './ui/states';
 
-function authorRole(post) {
-  return post.authorOffice || '';
+function AuthorLink({ post, size = 36, showOffice = true }) {
+  const to = post.authorId ? `/profile/${post.authorId}` : null;
+  const avatar = (
+    <Avatar
+      name={post.authorName}
+      src={post.authorPhotoUrl || undefined}
+      size={size}
+    />
+  );
+  const meta = (
+    <div className="flex flex-col">
+      <span className="font-sans font-bold text-ink" style={{ fontSize: size > 28 ? 13 : 12 }}>
+        {post.authorName}
+      </span>
+      {showOffice && (
+        <span className="font-sans text-ink-faint" style={{ fontSize: 12 }}>
+          {post.authorOffice || ''}{post.authorOffice && post.createdAt ? ' · ' : ''}{timeAgo(post.createdAt)}
+        </span>
+      )}
+    </div>
+  );
+
+  const inner = (
+    <div className="flex items-center gap-3">
+      {avatar}
+      {meta}
+    </div>
+  );
+
+  if (!to) return inner;
+  return (
+    <Link to={to} className="flex items-center gap-3 no-underline hover:opacity-80 transition-opacity">
+      {avatar}
+      {meta}
+    </Link>
+  );
 }
 
 export function FeaturePost({ post }) {
@@ -49,13 +84,7 @@ export function FeaturePost({ post }) {
         </p>
 
         <div className="flex items-center gap-3 mt-2">
-          <Avatar name={post.authorName} size={36} />
-          <div className="flex flex-col">
-            <span className="font-sans font-bold text-ink" style={{ fontSize: 13 }}>{post.authorName}</span>
-            <span className="font-sans text-ink-faint" style={{ fontSize: 12 }}>
-              {authorRole(post)}{authorRole(post) ? ' · ' : ''}{timeAgo(post.createdAt)}
-            </span>
-          </div>
+          <AuthorLink post={post} size={36} />
           <div className="ml-auto flex items-center gap-[18px] text-ink-soft font-sans" style={{ fontSize: 12 }}>
             <span className="inline-flex items-center gap-1.5"><HeartIcon />{post.likeCount ?? 0}</span>
             <span className="inline-flex items-center gap-1.5"><CommentIcon />{post.commentCount ?? 0}</span>
@@ -96,8 +125,7 @@ export function PostRow({ post }) {
         </p>
 
         <div className="flex items-center gap-3 mt-1.5 font-sans text-ink-faint" style={{ fontSize: 12 }}>
-          <Avatar name={post.authorName} size={22} />
-          <span className="text-ink font-bold">{post.authorName}</span>
+          <AuthorLink post={post} size={22} showOffice={false} />
           <span>·</span>
           <span>{timeAgo(post.createdAt)}</span>
           <span className="ml-auto inline-flex gap-4 text-ink-soft">

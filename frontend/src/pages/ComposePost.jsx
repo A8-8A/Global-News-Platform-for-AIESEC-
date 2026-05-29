@@ -1,26 +1,27 @@
 // Compose — MCP authoring (route "/compose", guarded MCP). Rendered
 // inside <Layout>. Live headline counter, standfirst, body, hero-media
-// (upload OR https URL), tag chips (max 3), quota rail. Publish posts to
-// /api/posts via useCreatePost; a 202/PENDING response shows the
-// "filed for review" toast then routes to the feed. Rebuilt from
-// screens-compose.jsx <ComposeScreen>.
+// (Firebase Storage upload OR https URL fallback), tag chips (max 3),
+// quota rail. Publish posts to /api/posts via useCreatePost.
 
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { storage } from '../lib/firebase';
 import { useCreatePost, useMyPosts } from '../lib/queries';
 import { useAuth } from '../context/AuthContext';
 import { Field, Input } from '../components/ui/Field';
 import { Btn } from '../components/ui/Btn';
 import { Photo } from '../components/ui/Photo';
 import { OfficeTag } from '../components/ui/OfficeTag';
-import { ArrowIcon } from '../components/ui/Icon';
+import { ArrowIcon, XIcon } from '../components/ui/Icon';
 
 const HEADLINE_MAX = 90;
 const TAGS = ['CONGRESS', 'PROGRAM', 'GOVERNANCE', 'GROWTH', 'OPERATIONS', 'PARTNERSHIP', 'STORY', 'STATEMENT'];
 const MAX_TAGS = 3;
+// 10 MB limit — keeps Storage costs low and load times fast.
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const ACCEPTED = 'image/jpeg,image/png,image/webp,image/gif';
 
-// Count this MCP's APPROVED posts in the trailing 7 days (mirrors the
-// stateless backend quota). Falls back to 0 if myPosts isn't available.
 function publishedThisWeek(myPosts) {
   if (!Array.isArray(myPosts)) return 0;
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
@@ -29,6 +30,203 @@ function publishedThisWeek(myPosts) {
   ).length;
 }
 
+/* ---------- Firebase Storage uploader hook ---------- */
+function useStorageUpload() {
+  const [state, setState] = useState({
+    status: 'idle',   // idle | uploading | done | error
+    progress: 0,      // 0–100
+    url: '',
+    fileName: '',
+    error: null,
+  });
+  const taskRef = useRef(null);
+
+  function upload(file) {
+    if (!file) return;
+    if (file.size > MAX_FILE_BYTES) {
+      setState((s) => ({ ...s, status: 'error', error: 'File is too large (max 10 MB).' }));
+      return;
+    }
+    // Path: post-images/<timestamp>-<sanitised filename>
+    const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    const path = `post-images/${Date.now()}-${safeName}`;
+    const storageRef = ref(storage, path);
+    const task = uploadBytesResumable(storageRef, file, { contentType: file.type });
+    taskRef.current = task;
+
+    setState({ status: 'uploading', progress: 0, url: '', fileName: file.name, error: null });
+
+    task.on(
+      'state_changed',
+      (snap) => {
+        const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+        setState((s) => ({ ...s, progress: pct }));
+      },
+      (err) => {
+        setState((s) => ({ ...s, status: 'error', error: err.message }));
+      },
+      async () => {
+        const url = await getDownloadURL(task.snapshot.ref);
+        setState((s) => ({ ...s, status: 'done', url, progress: 100 }));
+      }
+    );
+  }
+
+  function cancel() {
+    taskRef.current?.cancel();
+    setState({ status: 'idle', progress: 0, url: '', fileName: '', error: null });
+  }
+
+  return { ...state, upload, cancel };
+}
+
+/* ---------- Hero media widget ---------- */
+function HeroMedia({ onUrlChange }) {
+  const uploader = useStorageUpload();
+  const [externalUrl, setExternalUrl] = useState('');
+  const fileInputRef = useRef(null);
+
+  // Whenever the resolved URL changes (upload done, external typed, or cleared)
+  // bubble it up to the parent form.
+  const activeUrl = uploader.status === 'done' ? uploader.url : externalUrl;
+
+  useEffect(() => {
+    onUrlChange(activeUrl);
+  }, [activeUrl, onUrlChange]);
+
+  function onFileChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Clear any external URL when a file is chosen.
+    setExternalUrl('');
+    uploader.upload(file);
+    // Reset input so picking the same file again fires onChange.
+    e.target.value = '';
+  }
+
+  function clearAll() {
+    uploader.cancel();
+    setExternalUrl('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  const hasImage = uploader.status === 'done' || externalUrl;
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Preview / upload-progress card */}
+      <div
+        className="flex items-center gap-3.5 bg-white"
+        style={{ border: '1px solid var(--line-strong)', borderRadius: 6, padding: 14, minHeight: 76 }}
+      >
+        {/* Thumbnail / gradient placeholder */}
+        <div className="shrink-0 overflow-hidden" style={{ width: 64, height: 64, borderRadius: 4 }}>
+          <Photo src={hasImage ? activeUrl : undefined} tone="sky" ratio="1 / 1" />
+        </div>
+
+        <div className="flex flex-col gap-1 flex-1 min-w-0">
+          {uploader.status === 'uploading' && (
+            <>
+              <span className="font-sans font-bold text-ink truncate" style={{ fontSize: 13 }}>
+                {uploader.fileName}
+              </span>
+              {/* Progress bar */}
+              <div className="rounded-full overflow-hidden" style={{ height: 4, background: 'var(--paper-deep)' }}>
+                <div
+                  className="h-full transition-all"
+                  style={{ width: `${uploader.progress}%`, background: 'var(--accent)', borderRadius: 999 }}
+                />
+              </div>
+              <span className="font-mono text-ink-faint" style={{ fontSize: 10 }}>
+                Uploading… {uploader.progress}%
+              </span>
+            </>
+          )}
+
+          {uploader.status === 'done' && (
+            <>
+              <span className="font-sans font-bold text-ink truncate" style={{ fontSize: 13 }}>
+                {uploader.fileName}
+              </span>
+              <span className="font-mono text-ink-faint" style={{ fontSize: 10 }}>Uploaded to Firebase Storage ✓</span>
+            </>
+          )}
+
+          {uploader.status === 'error' && (
+            <span className="font-sans font-bold" style={{ fontSize: 12, color: 'var(--danger)' }}>
+              {uploader.error}
+            </span>
+          )}
+
+          {externalUrl && uploader.status === 'idle' && (
+            <>
+              <span className="font-sans font-bold text-ink" style={{ fontSize: 13 }}>External link set</span>
+              <span className="font-mono text-ink-faint truncate" style={{ fontSize: 10 }}>{externalUrl}</span>
+            </>
+          )}
+
+          {!hasImage && uploader.status !== 'uploading' && uploader.status !== 'error' && (
+            <>
+              <span className="font-sans font-bold text-ink-soft" style={{ fontSize: 13 }}>No image yet</span>
+              <span className="font-mono text-ink-faint" style={{ fontSize: 10 }}>upload a file or paste a link →</span>
+            </>
+          )}
+        </div>
+
+        {/* Clear button */}
+        {(hasImage || uploader.status === 'uploading' || uploader.status === 'error') && (
+          <button
+            type="button"
+            onClick={clearAll}
+            className="ml-auto shrink-0 inline-flex items-center gap-1 font-sans font-bold cursor-pointer"
+            style={{ fontSize: 11, color: 'var(--danger)' }}
+          >
+            <XIcon size={12} /> remove
+          </button>
+        )}
+      </div>
+
+      {/* Controls row: upload button + external URL */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPTED}
+          className="hidden"
+          onChange={onFileChange}
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploader.status === 'uploading'}
+          className="h-11 rounded-md font-sans font-bold text-ink border border-line-strong bg-white hover:bg-paper-soft transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{ fontSize: 13 }}
+        >
+          {uploader.status === 'uploading' ? `Uploading ${uploader.progress}%…` : '↑ Upload photo'}
+        </button>
+
+        <Input
+          prefix="https://"
+          value={externalUrl.replace(/^https?:\/\//, '')}
+          onChange={(e) => {
+            // Clear any Storage upload when the user switches to a URL.
+            if (uploader.status !== 'idle') uploader.cancel();
+            setExternalUrl(e.target.value ? `https://${e.target.value.replace(/^https?:\/\//, '')}` : '');
+          }}
+          placeholder="or paste a YouTube / Vimeo link"
+          disabled={uploader.status === 'uploading'}
+        />
+      </div>
+
+      <p className="font-sans text-ink-faint" style={{ fontSize: 11 }}>
+        JPEG, PNG, WebP or GIF · max 10 MB. Stored in Firebase Storage under <span className="font-mono">post-images/</span>.
+      </p>
+    </div>
+  );
+}
+
+/* ---------- Page ---------- */
 export default function ComposePost() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -41,16 +239,13 @@ export default function ComposePost() {
   const [mediaUrl, setMediaUrl] = useState('');
   const [tags, setTags] = useState([]);
   const [toast, setToast] = useState(null);
-  const [saveState, setSaveState] = useState('idle'); // idle | saving | saved
+  const [saveState, setSaveState] = useState('idle');
   const dirtyRef = useRef(false);
 
   const published = publishedThisWeek(myPosts);
   const quota = 2;
   const overQuota = published >= quota;
 
-  // Auto-save indicator: debounce 1.5s after any edit. (The draft PATCH
-  // endpoint isn't live yet, so this updates the indicator only — wire
-  // the api.put('/api/posts/draft', …) call here once it exists.)
   useEffect(() => {
     if (!dirtyRef.current) return;
     setSaveState('saving');
@@ -58,9 +253,7 @@ export default function ComposePost() {
     return () => clearTimeout(t);
   }, [title, excerpt, content, mediaUrl, tags]);
 
-  function markDirty() {
-    dirtyRef.current = true;
-  }
+  function markDirty() { dirtyRef.current = true; }
 
   function toggleTag(tag) {
     markDirty();
@@ -70,6 +263,12 @@ export default function ComposePost() {
       return [...prev, tag];
     });
   }
+
+  // Stable callback for HeroMedia — won't cause re-renders on every keystroke.
+  const handleMediaUrl = useRef((url) => {
+    markDirty();
+    setMediaUrl(url);
+  });
 
   function publish() {
     if (!title.trim()) {
@@ -107,10 +306,7 @@ export default function ComposePost() {
         <div className="fixed left-1/2 -translate-x-1/2 z-50" style={{ top: 88 }}>
           <div
             className="font-sans font-bold text-white inline-flex items-center gap-2 shadow-card"
-            style={{
-              padding: '12px 18px', borderRadius: 8, fontSize: 13,
-              background: toast.kind === 'error' ? 'var(--danger)' : 'var(--ink)',
-            }}
+            style={{ padding: '12px 18px', borderRadius: 8, fontSize: 13, background: toast.kind === 'error' ? 'var(--danger)' : 'var(--ink)' }}
           >
             {toast.msg}
           </div>
@@ -118,8 +314,8 @@ export default function ComposePost() {
       )}
 
       <div className="mx-auto max-w-[1080px] px-10 pt-10 pb-20 grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-[56px]">
-        {/* editor */}
         <main className="flex flex-col gap-8">
+          {/* breadcrumb + save state */}
           <div className="flex items-center justify-between font-sans text-ink-soft" style={{ fontSize: 13 }}>
             <Link to="/feed" className="font-bold">← Back to the feed</Link>
             <span className="font-sans text-ink-faint" style={{ fontSize: 12 }}>
@@ -128,6 +324,7 @@ export default function ComposePost() {
             </span>
           </div>
 
+          {/* byline */}
           <div className="flex flex-col gap-2.5">
             <div className="flex items-center gap-2.5">
               {user?.officeCode && <OfficeTag code={user.officeCode} mode="chip" />}
@@ -162,8 +359,7 @@ export default function ComposePost() {
           {/* standfirst */}
           <Field label="Standfirst" hint="One paragraph that makes a hurried reader want to keep reading.">
             <Input
-              multiline
-              rows={3}
+              multiline rows={3}
               value={excerpt}
               onChange={(e) => { markDirty(); setExcerpt(e.target.value); }}
               placeholder="The summary shown on the feed card."
@@ -179,7 +375,7 @@ export default function ComposePost() {
                   <span key={t.l} className="inline-flex items-center justify-center cursor-pointer text-ink" style={{ width: 30, height: 30, borderRadius: 4, fontFamily: 'var(--sans)', fontSize: 13, ...t.s }}>{t.l}</span>
                 ))}
                 <div style={{ width: 1, height: 18, background: 'var(--line)', margin: '0 6px' }} />
-                {['H2', 'H3', '“ ”', '• list', '1. list', 'link'].map((l) => (
+                {['H2', 'H3', '" "', '• list', '1. list', 'link'].map((l) => (
                   <span key={l} className="font-sans font-medium cursor-pointer text-ink-soft" style={{ fontSize: 12, padding: '6px 10px', borderRadius: 4 }}>{l}</span>
                 ))}
                 <span className="ml-auto font-mono text-ink-faint" style={{ fontSize: 10, letterSpacing: '0.1em' }}>MARKDOWN</span>
@@ -194,28 +390,9 @@ export default function ComposePost() {
             </div>
           </Field>
 
-          {/* hero media */}
-          <Field label="Hero media" optional hint="A photo URL or a YouTube link. Used as the lead image in the feed.">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div className="flex items-center gap-3.5 bg-white" style={{ border: '1px solid var(--line-strong)', borderRadius: 6, padding: 14 }}>
-                <div className="shrink-0 overflow-hidden" style={{ width: 64, height: 64, borderRadius: 4 }}>
-                  <Photo src={mediaUrl || undefined} tone="sky" ratio="1 / 1" />
-                </div>
-                <div className="flex flex-col gap-1 min-w-0">
-                  <span className="font-sans font-bold text-ink" style={{ fontSize: 13 }}>{mediaUrl ? 'Lead image set' : 'No image yet'}</span>
-                  <span className="font-mono text-ink-faint" style={{ fontSize: 10 }}>{mediaUrl ? 'from URL' : 'paste a link →'}</span>
-                </div>
-                {mediaUrl && (
-                  <button type="button" onClick={() => { markDirty(); setMediaUrl(''); }} className="ml-auto font-sans font-bold cursor-pointer" style={{ fontSize: 11, color: 'var(--danger)' }}>remove</button>
-                )}
-              </div>
-              <Input
-                prefix="https://"
-                value={mediaUrl.replace(/^https?:\/\//, '')}
-                onChange={(e) => { markDirty(); setMediaUrl(e.target.value ? `https://${e.target.value.replace(/^https?:\/\//, '')}` : ''); }}
-                placeholder="paste a photo or youtube link"
-              />
-            </div>
+          {/* hero media — Firebase Storage upload */}
+          <Field label="Hero media" optional>
+            <HeroMedia onUrlChange={handleMediaUrl.current} />
           </Field>
 
           {/* tags */}
@@ -226,8 +403,7 @@ export default function ComposePost() {
                 const atMax = tags.length >= MAX_TAGS && !on;
                 return (
                   <button
-                    key={t}
-                    type="button"
+                    key={t} type="button"
                     onClick={() => toggleTag(t)}
                     disabled={atMax}
                     className="font-sans font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-colors"

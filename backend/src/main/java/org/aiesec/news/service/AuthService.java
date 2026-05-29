@@ -16,62 +16,54 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Authentication orchestration.
  *
- * Two entry points, both ending in "issue our JWT":
+ * At login we now extract and persist:
+ *   - profile_photo → User.photoUrl  (pre-populates avatar from EXPA)
+ *   - home_lc data  → User.lcName, User.mcName
+ *   - office ISO-2  → User.officeCode  (drives globe + flag chips)
+ *   - role title    → User.roleTitle
  *
- *  loginWithAiesec(code):
- *    1. exchange the OAuth code for an AIESEC access token
- *    2. call the GIS API to identify the person + detect role
- *    3. create or update the local user record
- *    4. issue our session JWT
- *
- *  loginAsAdmin(email, password):
- *    1. look up the admin, verify the password hash
- *    2. issue our session JWT
- *
- * We never store the AIESEC access token or the user's AIESEC password.
+ * On subsequent logins these values are refreshed so EXPA changes
+ * (photo update, entity transfer) are reflected automatically.
+ * The one exception is photoUrl: if the user has uploaded their own
+ * Firebase photo we keep it rather than overwriting with the EXPA one.
  */
 @Service
 public class AuthService {
 
     private final AiesecOAuthService oauthService;
-    private final AiesecGisService gisService;
-    private final UserRepository userRepository;
-    private final JwtService jwtService;
-    private final PasswordEncoder passwordEncoder;
+    private final AiesecGisService   gisService;
+    private final UserRepository     userRepository;
+    private final JwtService         jwtService;
+    private final PasswordEncoder    passwordEncoder;
 
     public AuthService(AiesecOAuthService oauthService,
-                       AiesecGisService gisService,
-                       UserRepository userRepository,
-                       JwtService jwtService,
-                       PasswordEncoder passwordEncoder) {
-        this.oauthService = oauthService;
-        this.gisService = gisService;
-        this.userRepository = userRepository;
-        this.jwtService = jwtService;
+                       AiesecGisService   gisService,
+                       UserRepository     userRepository,
+                       JwtService         jwtService,
+                       PasswordEncoder    passwordEncoder) {
+        this.oauthService    = oauthService;
+        this.gisService      = gisService;
+        this.userRepository  = userRepository;
+        this.jwtService      = jwtService;
         this.passwordEncoder = passwordEncoder;
     }
 
-    /** AIESEC OAuth login - see class doc for the four steps. */
     @Transactional
     public LoginResponse loginWithAiesec(String code) {
-        // 1. code -> AIESEC access token (server-side, uses client_secret)
         AiesecTokenResponse aiesecToken = oauthService.exchangeCodeForToken(code);
+        CurrentPersonResponse person    = gisService.fetchCurrentPerson(aiesecToken.accessToken());
 
-        // 2. identify the person + role
-        CurrentPersonResponse person =
-                gisService.fetchCurrentPerson(aiesecToken.accessToken());
-        Role role = gisService.detectRole(person);
-        CurrentPersonResponse.Office office = gisService.primaryOffice(person);
+        Role                          role       = gisService.detectRole(person);
+        CurrentPersonResponse.Office  office     = gisService.primaryOffice(person);
+        String                        officeCode = gisService.deriveOfficeCode(person);
+        String                        lcName     = gisService.deriveLcName(person);
+        String                        mcName     = gisService.deriveMcName(person);
 
-        // 3. upsert the local user
-        User user = upsertAiesecUser(person, role, office);
-
-        // 4. issue our JWT
+        User user = upsertAiesecUser(person, role, office, officeCode, lcName, mcName);
         String jwt = jwtService.issue(user);
         return new LoginResponse(jwt, toProfile(user));
     }
 
-    /** Admin login - separate credential path, not OAuth. */
     @Transactional(readOnly = true)
     public LoginResponse loginAsAdmin(String email, String rawPassword) {
         User admin = userRepository.findByEmail(email)
@@ -82,12 +74,10 @@ public class AuthService {
                 || !passwordEncoder.matches(rawPassword, admin.getPasswordHash())) {
             throw new AuthException("Invalid email or password.");
         }
-
         String jwt = jwtService.issue(admin);
         return new LoginResponse(jwt, toProfile(admin));
     }
 
-    /** Look up a user by id - used by GET /api/auth/me. */
     @Transactional(readOnly = true)
     public UserProfile getProfile(Long userId) {
         User user = userRepository.findById(userId)
@@ -97,36 +87,64 @@ public class AuthService {
 
     // --- internals ---
 
-    private User upsertAiesecUser(CurrentPersonResponse person, Role role,
-                                  CurrentPersonResponse.Office office) {
+    private User upsertAiesecUser(CurrentPersonResponse person,
+                                  Role role,
+                                  CurrentPersonResponse.Office office,
+                                  String officeCode,
+                                  String lcName,
+                                  String mcName) {
         if (person.id() == null) {
             throw new AuthException("AIESEC did not return a person id.");
         }
-        String officeId = office != null ? office.id() : null;
+
+        String officeId   = office != null ? office.id()   : null;
         String officeName = office != null ? office.name() : null;
+
+        // Role title from first current position
+        String roleTitle = null;
+        if (person.current_positions() != null && !person.current_positions().isEmpty()) {
+            roleTitle = person.current_positions().get(0).title();
+        }
+
+        // EXPA profile photo — only use as initial value; don't overwrite
+        // a Firebase photo the user has already set.
+        String expaPhoto = person.profile_photo();
 
         return userRepository.findByAiesecPersonId(person.id())
                 .map(existing -> {
-                    // Refresh details that may have changed in EXPA
-                    // (e.g. a member became an MCP, or changed entity).
                     existing.setFullName(person.full_name());
                     existing.setRole(role);
                     existing.setOfficeId(officeId);
                     existing.setOfficeName(officeName);
+                    existing.setOfficeCode(officeCode);
+                    existing.setLcName(lcName);
+                    existing.setMcName(mcName);
+                    existing.setRoleTitle(roleTitle);
+                    // Only backfill photo from EXPA if the user hasn't
+                    // uploaded their own Firebase photo yet.
+                    if (existing.getPhotoUrl() == null && expaPhoto != null) {
+                        existing.setPhotoUrl(expaPhoto);
+                    }
                     return userRepository.save(existing);
                 })
                 .orElseGet(() -> userRepository.save(
-                        User.aiesecUser(person.id(), person.full_name(),
-                                officeId, officeName, role)));
+                        User.aiesecUser(
+                                person.id(), person.full_name(),
+                                officeId, officeName,
+                                role, roleTitle,
+                                officeCode, lcName, mcName,
+                                expaPhoto)));
     }
 
-    private static UserProfile toProfile(User u) {
+    public static UserProfile toProfile(User u) {
         return new UserProfile(
                 u.getId(),
                 u.getRole().name(),
                 u.getFullName(),
                 u.getEmail(),
                 u.getOfficeId(),
-                u.getOfficeName());
+                u.getOfficeName(),
+                u.getPhotoUrl(),
+                u.getRoleTitle());
     }
 }

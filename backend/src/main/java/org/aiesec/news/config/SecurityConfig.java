@@ -3,6 +3,7 @@ package org.aiesec.news.config;
 import org.aiesec.news.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -13,13 +14,15 @@ import org.springframework.web.cors.CorsConfigurationSource;
 /**
  * Security configuration.
  *
- * Auth model - there are TWO ways to obtain a session, but ONE token type:
- *   1. MCP / Member  -> AIESEC OAuth 2.0 -> backend issues our JWT.
- *   2. Admin         -> separate email+password login -> backend issues our JWT.
+ * Public endpoints (no token required):
+ *   GET  /api/feed/**       - the public news feed
+ *   GET  /api/users/**      - member profiles (read-only, for author links)
+ *   POST /api/auth/**       - login (AIESEC OAuth + admin)
+ *   GET  /health            - health check
  *
- * Both result in our own JWT. This filter chain is stateless: it does not
- * care HOW the JWT was obtained, only that it is valid. Role-based access
- * (MCP vs MEMBER vs ADMIN) is enforced from a claim inside that JWT.
+ * Everything else requires a valid session JWT.
+ * Role rules beyond "logged in" (MCP-only create, ADMIN-only moderation)
+ * are enforced in the service layer.
  */
 @Configuration
 public class SecurityConfig {
@@ -34,7 +37,6 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http,
                                             CorsConfigurationSource corsConfigurationSource) throws Exception {
         http
-                // Stateless API: no server sessions, no CSRF token needed.
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -42,11 +44,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // --- Public: no token required ---
                         .requestMatchers("/health").permitAll()
-                        // OAuth callback + admin login must be reachable
-                        // before a token exists.
                         .requestMatchers("/api/auth/**").permitAll()
-                        // Reading the feed is public (approved posts only).
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/feed/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/feed/**").permitAll()
+                        // Profile pages are public so any reader can click
+                        // an author's name without needing to sign in.
+                        .requestMatchers(HttpMethod.GET, "/api/users/**").permitAll()
 
                         // --- Admin-only ---
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
@@ -55,7 +57,6 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
 
-                // Validate our JWT before the username/password filter.
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

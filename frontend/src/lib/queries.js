@@ -128,3 +128,23 @@ export const useAuditLog = (filter) =>
     queryKey: ['admin', 'audit', filter ?? null],
     queryFn: () => api.get(`/api/admin/audit-log${qs(filter)}`),
   });
+
+/* ---------------- Profiles ---------------- */
+
+export const useProfile = (id) =>
+  useQuery({
+    queryKey: ['profile', id],
+    queryFn: () => api.get(`/api/users/${id}`),
+    enabled: !!id,
+  });
+
+export const useUpdateProfile = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }) => api.put(`/api/users/${id}`, body),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['profile', vars.id] });
+      qc.invalidateQueries({ queryKey: ['profile', 'me'] });
+    },
+  });
+};

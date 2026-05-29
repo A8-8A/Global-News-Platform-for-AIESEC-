@@ -12,15 +12,20 @@ public final class AdminDtos {
 
     /**
      * A post in the approval queue. Carries enough for the admin to
-     * judge it: content, author identity, and when it was submitted.
+     * judge it: content, author identity (including id + photo for the
+     * avatar), and when it was submitted.
      */
     public record PendingPostResponse(
             Long id,
             String title,
             String content,
+            String excerpt,
+            String tag,
             String mediaUrl,
+            Long authorId,
             String authorName,
             String authorOffice,
+            String authorPhotoUrl,
             Instant createdAt
     ) {
     }
@@ -45,6 +50,7 @@ public final class AdminDtos {
             Long mcpId,
             String mcpName,
             String office,
+            String photoUrl,
             long totalPosts,
             long approvedPosts,
             long pendingPosts,
