@@ -269,7 +269,7 @@ function McpTab({ pendingCount, setTab }) {
             const total = r.total ?? 0;
             const approved = r.approved ?? 0;
             const ratio = total ? approved / total : 0;
-            const name = r.name || r.authorName || 'MCP';
+            const name = r.mcpName || r.name || r.authorName || 'Unknown MCP';
             return (
               <div
                 key={name + i}
@@ -343,7 +343,7 @@ function AuditTab({ pendingCount, setTab }) {
           {entries.map((a, i) => {
             const action = a.action || a.type || 'ACTION';
             const tone = TONES[TONE_FOR(action)] || TONES.muted;
-            const who = a.actorName || a.adminName || a.who || (a.system ? 'system' : 'system');
+            const who = a.adminName || a.actorName || a.who || 'system';
             const isSystem = who === 'system';
             const note = a.note || a.detail || a.message || '';
             const target = a.target || (a.postId ? `post#${a.postId}` : a.targetId || '');

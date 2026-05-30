@@ -133,7 +133,7 @@ function CountryWidget({ iso, onClose, posts }) {
           <span style={{ fontSize: 22, lineHeight: 1 }}>{flag}</span>
           <div>
             <div className="font-sans font-bold text-ink" style={{ fontSize: 13, lineHeight: 1.2 }}>{name}</div>
-            <div className="font-mono text-accent-deep" style={{ fontSize: 9, letterSpacing: '0.14em' }}>AIESEC MC · {iso}</div>
+            <div className="font-mono text-accent-deep" style={{ fontSize: 9, letterSpacing: '0.14em' }}>AIESEC MC · {flagEmoji(iso)}</div>
           </div>
         </div>
         <button

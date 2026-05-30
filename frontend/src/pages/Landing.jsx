@@ -311,7 +311,14 @@ function LandingFooter() {
 
 export default function Landing() {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const onSignInNav = () => navigate('/login');
+
+  // Redirect authenticated users straight to the feed
+  if (isAuthenticated) {
+    navigate('/feed', { replace: true });
+    return null;
+  }
   return (
     <div className="bg-paper min-h-full relative">
       <LandingNav onSignIn={onSignInNav} />

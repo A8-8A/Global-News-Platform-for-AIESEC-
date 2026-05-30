@@ -31,7 +31,7 @@ function ArticleBody({ content }) {
 }
 
 function Comment({ c, isFirst }) {
-  const name = c.authorName || c.author || 'Member';
+  const name = c.authorName || c.author || 'AIESEC Member';
   const to = c.authorId ? `/profile/${c.authorId}` : null;
   const flag = flagEmoji(c.officeCode || null);
 
