@@ -45,6 +45,9 @@ public class UserService {
         if (request.photoUrl() != null) {
             user.setPhotoUrl(request.photoUrl().isBlank() ? null : request.photoUrl());
         }
+        if (request.email() != null) {
+            user.setEmail(request.email().isBlank() ? null : request.email());
+        }
 
         return toResponse(userRepository.save(user));
     }

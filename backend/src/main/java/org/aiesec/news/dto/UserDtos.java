@@ -37,6 +37,9 @@ public final class UserDtos {
             String bio,
 
             @Size(max = 1024, message = "Photo URL is too long")
-            String photoUrl
+            String photoUrl,
+
+            @Size(max = 320, message = "Email is too long")
+            String email
     ) {}
 }
