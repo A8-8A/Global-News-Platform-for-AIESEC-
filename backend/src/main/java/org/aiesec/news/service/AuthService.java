@@ -113,12 +113,19 @@ public class AuthService {
         return userRepository.findByAiesecPersonId(person.id())
                 .map(existing -> {
                     existing.setFullName(person.full_name());
-                    existing.setRole(role);
+                    // Never downgrade a role that was manually elevated in the DB.
+                    // If EXPA says MEMBER but the DB says MCP, keep MCP.
+                    // This lets admins promote users without EXPA position data
+                    // overwriting the elevation on every login.
+                    if (role == Role.MCP || existing.getRole() != Role.MCP) {
+                        existing.setRole(role);
+                    }
                     existing.setOfficeId(officeId);
                     existing.setOfficeName(officeName);
-                    existing.setOfficeCode(officeCode);
-                    existing.setLcName(lcName);
-                    existing.setMcName(mcName);
+                    // Only update officeCode/lcName/mcName if EXPA actually returned them.
+                    if (officeCode != null) existing.setOfficeCode(officeCode);
+                    if (lcName    != null) existing.setLcName(lcName);
+                    if (mcName    != null) existing.setMcName(mcName);
                     existing.setRoleTitle(roleTitle);
                     // Only backfill photo from EXPA if the user hasn't
                     // uploaded their own Firebase photo yet.
