@@ -12,8 +12,9 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { useFeed } from '../lib/queries';
 import { timeAgo } from './ui/states';
 
+// NASA Blue Marble 4K — no clouds, no wind trails, country detail visible
 const EARTH_TEXTURE =
-  'https://raw.githubusercontent.com/mrdoob/three.js/r128/examples/textures/land_ocean_ice_cloud_2048.jpg';
+  'https://raw.githubusercontent.com/turban/webgl-earth/master/images/2_no_clouds_4k.jpg';
 
 // ─── AIESEC MC entities ───────────────────────────────────────────────────────
 const ENTITIES = {
@@ -229,8 +230,8 @@ export default function GlobeRail() {
     controls.dampingFactor = 0.06;
     controls.rotateSpeed   = 0.55;
     controls.zoomSpeed     = 0.7;
-    controls.minDistance   = 1.8;
-    controls.maxDistance   = 4.5;
+    controls.minDistance   = 1.15;
+    controls.maxDistance   = 6.0;
     controls.enablePan     = false;
     controls.update();
 
