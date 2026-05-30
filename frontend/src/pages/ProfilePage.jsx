@@ -193,11 +193,21 @@ export default function ProfilePage() {
   }
 
   if (isError || !data) {
+    // Surface the actual error so it's visible without DevTools
+    const errMsg = isError?.message || (typeof isError === 'object' ? JSON.stringify(isError) : String(isError ?? ''));
     return (
       <div className="mx-auto max-w-article px-10 py-20 flex flex-col gap-4">
         <h1 className="display" style={{ fontSize: 36, color: 'var(--ink)' }}>
           Couldn't load this <span className="display-italic" style={{ color: 'var(--danger)' }}>profile.</span>
         </h1>
+        {errMsg && (
+          <div className="font-mono text-ink-soft" style={{ fontSize: 12, padding: '12px 14px', background: 'var(--paper-soft)', borderRadius: 6, border: '1px solid var(--line)', wordBreak: 'break-all' }}>
+            {errMsg}
+          </div>
+        )}
+        <div className="font-sans text-ink-faint" style={{ fontSize: 12 }}>
+          Endpoint: GET /api/auth/me (own profile) · resolved id: {String(resolvedId ?? 'undefined')}
+        </div>
         <div className="flex gap-3">
           <Btn variant="primary" onClick={() => refetch()}>Try again</Btn>
           <Btn variant="outline" onClick={() => navigate('/feed')}>Back to the feed</Btn>
