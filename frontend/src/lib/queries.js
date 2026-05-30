@@ -131,10 +131,14 @@ export const useAuditLog = (filter) =>
 
 /* ---------------- Profiles ---------------- */
 
-export const useProfile = (id) =>
+// For own profile we call /api/auth/me (always works, no V2 dependency).
+// For other users we call /api/users/:id.
+export const useProfile = (id, isOwnProfile = false) =>
   useQuery({
     queryKey: ['profile', id],
-    queryFn: () => api.get(`/api/users/${id}`),
+    queryFn: () => isOwnProfile
+      ? api.get('/api/auth/me')
+      : api.get(`/api/users/${id}`),
     enabled: !!id,
   });
 

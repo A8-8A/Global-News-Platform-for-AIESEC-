@@ -327,19 +327,33 @@ export default function GlobeRail() {
 
     // ── Highlight ─────────────────────────────────────────────────
     function updateHighlight(iso) {
+      currentSelected = iso;
       dotMeshes.forEach(mesh => {
         const sel = mesh.userData.iso === iso;
         mesh.material.color.set(sel ? 0x037EF3 : 0xffffff);
-        mesh.scale.setScalar(sel ? 1.8 : 1.0);
+        // scale is handled per-frame in animate() — don't override here
       });
     }
     stateRef.current.updateHighlight = updateHighlight;
 
     // ── Animate ───────────────────────────────────────────────────
     let animId;
+    // Dots scale inversely with camera distance so they stay visually
+    // small when zoomed in — world-space size stays constant relative
+    // to the globe, but we want screen-space to shrink on zoom.
+    const BASE_DOT_SCALE = 1.0;
+    let currentSelected = null;
+
     (function animate() {
       animId = requestAnimationFrame(animate);
       controls.update();
+      // Scale dots by camera distance: closer = smaller dots
+      const dist = camera.position.length();
+      const zoomScale = dist / 2.8; // 2.8 is the default distance
+      dotMeshes.forEach(mesh => {
+        const isSel = mesh.userData.iso === currentSelected;
+        mesh.scale.setScalar((isSel ? 1.8 : BASE_DOT_SCALE) * zoomScale);
+      });
       renderer.render(scene, camera);
     })();
 

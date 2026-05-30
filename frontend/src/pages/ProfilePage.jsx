@@ -155,7 +155,7 @@ export default function ProfilePage() {
   const resolvedId = id === 'me' ? me?.id : id;
   const isOwnProfile = id === 'me' || (me && String(me.id) === String(id));
 
-  const { data, isLoading, isError, refetch } = useProfile(resolvedId);
+  const { data, isLoading, isError, refetch } = useProfile(resolvedId, isOwnProfile);
   const updateProfile = useUpdateProfile();
 
   const [editingBio, setEditingBio] = useState(false);
@@ -206,20 +206,20 @@ export default function ProfilePage() {
     );
   }
 
+  // Normalise both response shapes:
+  //   /api/auth/me  → { id, role, fullName, email, officeId, officeName, photoUrl, roleTitle }
+  //   /api/users/id → { id, fullName, email, officeName, mcName, officeCode, roleTitle, bio, photoUrl }
   const profile = data.user ?? data;
 
-  // Derive display fields — map EXPA structure to flat display values.
-  const fullName    = profile.fullName || profile.full_name || 'AIESEC Member';
-  const email       = profile.email || '';
-  const bio         = profile.bio || '';
-  const photoUrl    = profile.photoUrl || profile.profile_photo || '';
-  const officeCode  = profile.officeCode || null;
-  const lcName      = profile.lcName || profile.home_lc?.name || '';
-  const mcName      = profile.mcName || profile.home_lc?.parent?.name || '';
-  const roleTitle   = profile.roleTitle
-    || profile.current_positions?.[0]?.title
-    || 'Member';
-  const flag        = flagEmoji(officeCode);
+  const fullName   = profile.fullName   || profile.full_name || 'AIESEC Member';
+  const email      = profile.email      || '';
+  const bio        = profile.bio        || '';
+  const photoUrl   = profile.photoUrl   || profile.profile_photo || '';
+  const officeCode = profile.officeCode || null;
+  const lcName     = profile.lcName     || profile.officeName || profile.home_lc?.name || '';
+  const mcName     = profile.mcName     || profile.home_lc?.parent?.name || '';
+  const roleTitle  = profile.roleTitle  || profile.current_positions?.[0]?.title || 'Member';
+  const flag       = flagEmoji(officeCode);
 
   function saveBio() {
     updateProfile.mutate(
