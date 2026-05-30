@@ -1,11 +1,9 @@
 // GlobeRail — interactive AIESEC world globe for the feed right rail.
 //
-// Clean approach: AIESEC-blue ocean sphere + atmosphere glow + a glowing
-// dot on each of the ~120 AIESEC MC countries (positioned by lat/lon).
-// Clicking a dot opens the country widget (flag, name, latest posts).
-// Rotate with drag, zoom with scroll. Three.js r128 + OrbitControls.
-//
-// Country fills removed — bad mesh triangulation caused visual artifacts.
+// Real Earth texture (NASA Blue Marble via CDN) mapped onto a sphere.
+// MeshBasicMaterial = no lighting, no sun shading, just the texture.
+// AIESEC MC entities get a glowing dot at their lat/lon.
+// Click a dot → country widget (flag, name, latest posts as links).
 
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -13,6 +11,10 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { useFeed } from '../lib/queries';
 import { timeAgo } from './ui/states';
+
+// Earth texture — 2K Natural Earth II (public domain, no auth needed)
+const EARTH_TEXTURE_URL =
+  'https://cdn.jsdelivr.net/gh/turban/Leaflet.Sync@master/examples/earth.jpg';
 
 // ─── AIESEC MC entities: ISO-2 → { name, lat, lon } ─────────────────────────
 const ENTITIES = {
@@ -78,7 +80,6 @@ const ENTITIES = {
   UZ:{n:'Uzbekistan',lat:41.4,lon:64.6},       VE:{n:'Venezuela',lat:6.4,lon:-66.6},
   VN:{n:'Vietnam',lat:14.1,lon:108.3},         YE:{n:'Yemen',lat:15.6,lon:48.5},
   ZM:{n:'Zambia',lat:-13.1,lon:27.8},          ZW:{n:'Zimbabwe',lat:-19.0,lon:29.2},
-  AM:{n:'Armenia',lat:40.1,lon:45.0},          GE:{n:'Georgia',lat:42.3,lon:43.4},
 };
 
 function flagEmoji(iso) {
@@ -89,7 +90,7 @@ function flagEmoji(iso) {
 }
 
 function latLonToVec3(lat, lon, r) {
-  const phi   = (90 - lat) * Math.PI / 180;
+  const phi   = (90 - lat)  * Math.PI / 180;
   const theta = (lon + 180) * Math.PI / 180;
   return new THREE.Vector3(
     -r * Math.sin(phi) * Math.cos(theta),
@@ -101,14 +102,15 @@ function latLonToVec3(lat, lon, r) {
 // ─── Country widget ───────────────────────────────────────────────────────────
 function CountryWidget({ iso, onClose, posts }) {
   const entity = ENTITIES[iso];
-  const name = entity?.n || iso;
-  const flag = flagEmoji(iso);
+  const name   = entity?.n || iso;
+  const flag   = flagEmoji(iso);
 
   const mcPosts = useMemo(() => {
     if (!posts?.length) return [];
     return posts.filter(p =>
       (p.officeCode && p.officeCode.toUpperCase() === iso) ||
-      (p.authorOffice && p.authorOffice.toLowerCase().includes(name.toLowerCase().split(' ')[0]))
+      (p.authorOffice && p.authorOffice.toLowerCase()
+        .includes(name.toLowerCase().split(' ')[0]))
     ).slice(0, 3);
   }, [posts, iso, name]);
 
@@ -130,10 +132,16 @@ function CountryWidget({ iso, onClose, posts }) {
           <span style={{ fontSize: 26, lineHeight: 1 }}>{flag}</span>
           <div className="flex flex-col">
             <span className="font-display font-bold text-ink" style={{ fontSize: 15 }}>{name}</span>
-            <span className="font-mono text-accent-deep" style={{ fontSize: 10, letterSpacing: '0.14em' }}>AIESEC MC · {iso}</span>
+            <span className="font-mono text-accent-deep" style={{ fontSize: 10, letterSpacing: '0.14em' }}>
+              AIESEC MC · {iso}
+            </span>
           </div>
         </div>
-        <button onClick={onClose} className="font-mono text-ink-faint hover:text-ink" style={{ fontSize: 20, lineHeight: 1, padding: '0 4px' }}>×</button>
+        <button
+          onClick={onClose}
+          className="font-mono text-ink-faint hover:text-ink"
+          style={{ fontSize: 20, lineHeight: 1, padding: '0 4px' }}
+        >×</button>
       </div>
 
       {mcPosts.length === 0 ? (
@@ -144,13 +152,23 @@ function CountryWidget({ iso, onClose, posts }) {
         <div className="flex flex-col gap-1.5">
           {mcPosts.map(p => (
             <Link
-              key={p.id} to={`/feed/${p.id}`}
+              key={p.id}
+              to={`/feed/${p.id}`}
               className="flex flex-col gap-0.5 no-underline group"
-              style={{ padding: '8px 10px', borderRadius: 6, background: 'var(--accent-tint)', border: '1px solid var(--accent-light)' }}
+              style={{
+                padding: '8px 10px',
+                borderRadius: 6,
+                background: 'var(--accent-tint)',
+                border: '1px solid var(--accent-light)',
+              }}
             >
               <span
                 className="font-sans font-bold text-ink group-hover:text-accent-deep transition-colors"
-                style={{ fontSize: 12, lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+                style={{
+                  fontSize: 12, lineHeight: 1.3,
+                  display: '-webkit-box', WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                }}
               >
                 {p.title}
               </span>
@@ -165,10 +183,10 @@ function CountryWidget({ iso, onClose, posts }) {
   );
 }
 
-// ─── Globe canvas ─────────────────────────────────────────────────────────────
+// ─── Globe ────────────────────────────────────────────────────────────────────
 export default function GlobeRail() {
-  const mountRef   = useRef(null);
-  const stateRef   = useRef({});
+  const mountRef           = useRef(null);
+  const stateRef           = useRef({});
   const [selected, setSelected] = useState(null);
   const [ready,    setReady]    = useState(false);
   const { data } = useFeed();
@@ -184,68 +202,76 @@ export default function GlobeRail() {
     const W = el.clientWidth;
     const H = el.clientHeight;
 
+    // ── Renderer ──────────────────────────────────────────────────
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(W, H);
     renderer.setClearColor(0x000000, 0);
     el.appendChild(renderer.domElement);
 
+    // ── Scene / camera ────────────────────────────────────────────
     const scene  = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 1000);
     camera.position.set(0, 0, 2.8);
 
+    // ── Controls ──────────────────────────────────────────────────
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping  = true;
-    controls.dampingFactor  = 0.06;
-    controls.rotateSpeed    = 0.55;
-    controls.zoomSpeed      = 0.7;
-    controls.minDistance    = 1.8;
-    controls.maxDistance    = 4.5;
-    controls.enablePan      = false;
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.rotateSpeed   = 0.55;
+    controls.zoomSpeed     = 0.7;
+    controls.minDistance   = 1.8;
+    controls.maxDistance   = 4.5;
+    controls.enablePan     = false;
     controls.update();
 
     const R = 1.0;
 
-    // ── Ocean sphere ──────────────────────────────────────────────
-    scene.add(new THREE.Mesh(
-      new THREE.SphereGeometry(R, 64, 64),
-      new THREE.MeshPhongMaterial({
-        color: 0x037EF3,
-        shininess: 25,
-        specular: new THREE.Color(0x9BC8F8),
-      })
-    ));
+    // ── Earth sphere — texture only, no lighting ──────────────────
+    // MeshBasicMaterial ignores all lights so there's zero shading;
+    // the texture renders exactly as it looks (no dark side, no sun).
+    const loader  = new THREE.TextureLoader();
+    const earthGeo = new THREE.SphereGeometry(R, 64, 64);
+    const earthMat = new THREE.MeshBasicMaterial({ color: 0x888888 }); // placeholder
+    const earthMesh = new THREE.Mesh(earthGeo, earthMat);
+    scene.add(earthMesh);
 
-    // ── Atmosphere glow ───────────────────────────────────────────
-    scene.add(new THREE.Mesh(
-      new THREE.SphereGeometry(R * 1.04, 64, 64),
-      new THREE.MeshPhongMaterial({
-        color: 0x9BC8F8,
-        transparent: true,
-        opacity: 0.15,
-        side: THREE.BackSide,
-      })
-    ));
+    loader.load(
+      EARTH_TEXTURE_URL,
+      (tex) => {
+        if (cancelled) return;
+        earthMat.map   = tex;
+        earthMat.color = new THREE.Color(0xffffff); // let texture show fully
+        earthMat.needsUpdate = true;
+        setReady(true);
+      },
+      undefined,
+      () => {
+        // texture failed — fall back to a clean blue globe
+        if (cancelled) return;
+        earthMat.color = new THREE.Color(0x1a6fa8);
+        earthMat.needsUpdate = true;
+        setReady(true);
+      }
+    );
 
-    // ── Lights ────────────────────────────────────────────────────
-    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-    const sun = new THREE.DirectionalLight(0xffffff, 1.0);
-    sun.position.set(5, 3, 5);
-    scene.add(sun);
+    // ── Thin atmosphere ring (no light needed — additive blend) ───
+    const atmMat = new THREE.MeshBasicMaterial({
+      color: 0x9BC8F8,
+      transparent: true,
+      opacity: 0.08,
+      side: THREE.BackSide,
+    });
+    scene.add(new THREE.Mesh(new THREE.SphereGeometry(R * 1.035, 64, 64), atmMat));
 
     // ── Entity dots ───────────────────────────────────────────────
-    // Each AIESEC MC gets a small white dot on the sphere surface.
-    // Hovered/selected dots glow brighter.
-    const dotGeo = new THREE.SphereGeometry(0.018, 8, 8);
-    const dotMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const dotMatHover = new THREE.MeshBasicMaterial({ color: 0xFFFFFF, transparent: false });
-
-    const dotMeshes = []; // { mesh, iso }
+    const dotGeo  = new THREE.SphereGeometry(0.016, 8, 8);
+    const dotMeshes = [];
 
     Object.entries(ENTITIES).forEach(([iso, { lat, lon }]) => {
-      const pos  = latLonToVec3(lat, lon, R + 0.012);
-      const mesh = new THREE.Mesh(dotGeo, dotMat.clone());
-      mesh.position.copy(pos);
+      const mat  = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const mesh = new THREE.Mesh(dotGeo, mat);
+      mesh.position.copy(latLonToVec3(lat, lon, R + 0.014));
       mesh.userData = { iso };
       scene.add(mesh);
       dotMeshes.push({ mesh, iso });
@@ -253,19 +279,17 @@ export default function GlobeRail() {
 
     // ── Raycaster ─────────────────────────────────────────────────
     const raycaster = new THREE.Raycaster();
-    raycaster.params.Points = { threshold: 0.05 };
-    const mouse      = new THREE.Vector2();
-    let isDragging   = false;
-    let downPos      = { x: 0, y: 0 };
+    const mouse     = new THREE.Vector2();
+    let isDragging  = false;
+    let downPos     = { x: 0, y: 0 };
 
     function onDown(e) {
       downPos    = { x: e.clientX, y: e.clientY };
       isDragging = false;
     }
-    function onMouseMove(e) {
+    function onMove(e) {
       const dx = e.clientX - downPos.x, dy = e.clientY - downPos.y;
-      if (Math.sqrt(dx*dx+dy*dy) > 4) isDragging = true;
-
+      if (Math.sqrt(dx*dx + dy*dy) > 4) isDragging = true;
       const rect = renderer.domElement.getBoundingClientRect();
       mouse.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
       mouse.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
@@ -286,7 +310,7 @@ export default function GlobeRail() {
     }
 
     renderer.domElement.addEventListener('mousedown', onDown);
-    renderer.domElement.addEventListener('mousemove', onMouseMove);
+    renderer.domElement.addEventListener('mousemove', onMove);
     renderer.domElement.addEventListener('click', onClick);
 
     // ── Highlight selected dot ────────────────────────────────────
@@ -294,7 +318,7 @@ export default function GlobeRail() {
       dotMeshes.forEach(({ mesh }) => {
         const sel = mesh.userData.iso === iso;
         mesh.material.color.set(sel ? 0x037EF3 : 0xffffff);
-        mesh.scale.setScalar(sel ? 1.8 : 1.0);
+        mesh.scale.setScalar(sel ? 2.0 : 1.0);
       });
     }
     stateRef.current.updateHighlight = updateHighlight;
@@ -317,13 +341,11 @@ export default function GlobeRail() {
     });
     ro.observe(el);
 
-    setReady(true);
-
     stateRef.current.cleanup = () => {
       cancelAnimationFrame(animId);
       ro.disconnect();
       renderer.domElement.removeEventListener('mousedown', onDown);
-      renderer.domElement.removeEventListener('mousemove', onMouseMove);
+      renderer.domElement.removeEventListener('mousemove', onMove);
       renderer.domElement.removeEventListener('click', onClick);
       renderer.dispose();
       if (el.contains(renderer.domElement)) el.removeChild(renderer.domElement);
@@ -341,7 +363,6 @@ export default function GlobeRail() {
 
   return (
     <div className="hidden lg:flex flex-col sticky top-24 self-start" style={{ width: 300 }}>
-      {/* label row */}
       <div className="flex items-center justify-between mb-3">
         <span className="font-mono uppercase text-ink-faint" style={{ fontSize: 10, letterSpacing: '0.18em' }}>
           AIESEC Network
@@ -352,13 +373,12 @@ export default function GlobeRail() {
         </span>
       </div>
 
-      {/* globe container */}
-      <div style={{ position: 'relative', width: '100%', height: 300, borderRadius: 10, overflow: 'hidden', background: 'var(--paper-soft)', border: '1px solid var(--line)' }}>
+      <div style={{ position: 'relative', width: '100%', height: 300, borderRadius: 10, overflow: 'hidden', background: '#1a2a3a', border: '1px solid var(--line)' }}>
         {!ready && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="flex flex-col items-center gap-2">
-              <div className="animate-spin-slow" style={{ width: 28, height: 28, border: '2px solid var(--accent-light)', borderTopColor: 'var(--accent)', borderRadius: '50%' }} />
-              <span className="font-mono text-ink-faint" style={{ fontSize: 10, letterSpacing: '0.12em' }}>loading globe…</span>
+              <div className="animate-spin-slow" style={{ width: 28, height: 28, border: '2px solid rgba(255,255,255,0.2)', borderTopColor: '#fff', borderRadius: '50%' }} />
+              <span className="font-mono" style={{ fontSize: 10, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.5)' }}>loading globe…</span>
             </div>
           </div>
         )}
@@ -368,7 +388,6 @@ export default function GlobeRail() {
         )}
       </div>
 
-      {/* hint */}
       {!selected && (
         <p className="font-sans text-ink-faint mt-2.5" style={{ fontSize: 11, lineHeight: 1.5 }}>
           Click any <span className="font-bold text-ink">white dot</span> to see stories from that entity.
