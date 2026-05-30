@@ -131,19 +131,26 @@ export const useAuditLog = (filter) =>
 
 /* ---------------- Profiles ---------------- */
 
-// For own profile we ALWAYS call /api/auth/me — never /api/users/:id.
-// This means we don't need resolvedId to be set, and we bypass any
-// UserService issues. For other users we call /api/users/:id.
+// useProfile — fetches a user profile.
+// For own profile: calls /api/auth/me (JWT-only, no DB, always works)
+// then enriches with /api/users/:id once the id is known.
+// For other users: calls /api/users/:id directly.
 export const useProfile = (id, isOwnProfile = false) =>
   useQuery({
     queryKey: ['profile', isOwnProfile ? 'me' : id],
     queryFn: () => isOwnProfile
       ? api.get('/api/auth/me')
       : api.get(`/api/users/${id}`),
-    // For own profile: always enabled (we know the user is logged in
-    // because the authLoading guard already passed).
-    // For others: enabled only when we have a real id.
     enabled: isOwnProfile ? true : !!id,
+  });
+
+// Enriched own profile — once /api/auth/me gives us the real id,
+// call /api/users/:id for the full profile (bio, photo, officeCode etc.)
+export const useOwnFullProfile = (userId) =>
+  useQuery({
+    queryKey: ['profile', 'full', userId],
+    queryFn: () => api.get(`/api/users/${userId}`),
+    enabled: !!userId,
   });
 
 export const useUpdateProfile = () => {

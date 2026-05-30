@@ -1,49 +1,66 @@
 package org.aiesec.news.controller;
 
+import io.jsonwebtoken.Claims;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.aiesec.news.dto.AuthDtos.AdminLoginRequest;
 import org.aiesec.news.dto.AuthDtos.AiesecLoginRequest;
 import org.aiesec.news.dto.AuthDtos.LoginResponse;
 import org.aiesec.news.dto.AuthDtos.UserProfile;
-import org.aiesec.news.security.CurrentUser;
+import org.aiesec.news.exception.AuthException;
+import org.aiesec.news.security.JwtService;
 import org.aiesec.news.service.AuthService;
 import org.springframework.web.bind.annotation.*;
 
 /**
  * Authentication endpoints.
  *
- *   POST /api/auth/aiesec  - complete AIESEC OAuth login (frontend sends
- *                            the code it received at the redirect URI)
+ *   POST /api/auth/aiesec  - complete AIESEC OAuth login
  *   POST /api/auth/admin   - admin email/password login
- *   GET  /api/auth/me      - profile of the currently logged-in user
+ *   GET  /api/auth/me      - returns the profile encoded in the JWT
  *
- * The first two are public (no token yet); /me requires a valid session.
+ * /me reads exclusively from the JWT — zero DB calls.
+ * This makes it immune to any schema or DB issues and always fast.
+ * The full profile (with bio, photo, officeCode etc.) is at GET /api/users/:id.
  */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
     private final AuthService authService;
+    private final JwtService  jwtService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, JwtService jwtService) {
         this.authService = authService;
+        this.jwtService  = jwtService;
     }
 
-    /** Exchange the OAuth code (server-side) and start a session. */
     @PostMapping("/aiesec")
     public LoginResponse loginWithAiesec(@Valid @RequestBody AiesecLoginRequest request) {
         return authService.loginWithAiesec(request.code());
     }
 
-    /** Admin login via the separate credential path. */
     @PostMapping("/admin")
     public LoginResponse loginAsAdmin(@Valid @RequestBody AdminLoginRequest request) {
         return authService.loginAsAdmin(request.email(), request.password());
     }
 
-    /** Who am I - lets the frontend restore session state on reload. */
+    /**
+     * Returns the logged-in user's core identity from the JWT.
+     * No DB call — works regardless of schema state.
+     */
     @GetMapping("/me")
-    public UserProfile me() {
-        return authService.getProfile(CurrentUser.requireId());
+    public UserProfile me(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header == null || !header.startsWith("Bearer ")) {
+            throw new AuthException("Not authenticated.");
+        }
+        Claims claims = jwtService.parse(header.substring(7));
+
+        Long   userId = Long.valueOf(claims.getSubject());
+        String role   = claims.get("role", String.class);
+        String name   = claims.get("name", String.class);
+
+        return new UserProfile(userId, role, name, null, null, null, null, null);
     }
 }

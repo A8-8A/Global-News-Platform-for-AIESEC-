@@ -18,7 +18,7 @@ import { useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { storage } from '../lib/firebase';
-import { useProfile, useUpdateProfile } from '../lib/queries';
+import { useProfile, useOwnFullProfile, useUpdateProfile } from '../lib/queries';
 import { useAuth } from '../context/AuthContext';
 import { Avatar } from '../components/ui/Avatar';
 import { OfficeTag } from '../components/ui/OfficeTag';
@@ -151,14 +151,26 @@ export default function ProfilePage() {
   const { user: me, loading: authLoading, completeLogin } = useAuth();
   const navigate = useNavigate();
 
-  // isOwnProfile drives which endpoint fires (/api/auth/me vs /api/users/:id).
-  // resolvedId is only needed for PUT (save bio/photo) and for other users' profiles.
-  // We intentionally do NOT gate own-profile on resolvedId — me.id may be
-  // undefined if the backend omits it (seen in prod), but /api/auth/me still works.
   const isOwnProfile = id === 'me' || (me && String(me.id) === String(id));
   const resolvedId = id === 'me' ? me?.id : id;
 
-  const { data, isLoading, isError, refetch } = useProfile(resolvedId, isOwnProfile);
+  // Step 1: /api/auth/me — fast, JWT-only, gives us id + role + name.
+  // Step 2: /api/users/:id — full profile once we have the id.
+  // For other users' profiles, skip step 1 and go straight to step 2.
+  const { data: jwtData, isLoading: jwtLoading, isError: jwtError, refetch: jwtRefetch }
+    = useProfile(resolvedId, isOwnProfile);
+
+  // The real id: from step 1 response (own profile) or from URL param (other)
+  const profileId = isOwnProfile ? (jwtData?.id ?? resolvedId) : id;
+
+  const { data: fullData, isLoading: fullLoading }
+    = useOwnFullProfile(isOwnProfile ? profileId : null);
+
+  // Merge: full profile data wins over JWT data when available
+  const data    = (isOwnProfile && fullData) ? fullData : jwtData;
+  const isLoading = isOwnProfile ? jwtLoading : jwtLoading;
+  const isError   = jwtError;
+  const refetch   = jwtRefetch;
   const updateProfile = useUpdateProfile();
 
   const [editingBio, setEditingBio] = useState(false);
