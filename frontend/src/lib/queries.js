@@ -91,6 +91,12 @@ export const useMyPosts = () =>
 
 /* ---------------- Admin ---------------- */
 
+export const useAllPostsAdmin = () =>
+  useQuery({
+    queryKey: ['admin', 'posts', 'all'],
+    queryFn: () => api.get('/api/admin/posts/all'),
+  });
+
 export const usePendingPosts = () =>
   useQuery({
     queryKey: ['admin', 'pending'],
@@ -128,6 +134,17 @@ export const useAuditLog = (filter) =>
     queryKey: ['admin', 'audit', filter ?? null],
     queryFn: () => api.get(`/api/admin/audit-log${qs(filter)}`),
   });
+
+export const useDeletePost = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => api.delete(`/api/posts/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['feed'] });
+      qc.invalidateQueries({ queryKey: ['posts', 'mine'] });
+    },
+  });
+};
 
 /* ---------------- Profiles ---------------- */
 

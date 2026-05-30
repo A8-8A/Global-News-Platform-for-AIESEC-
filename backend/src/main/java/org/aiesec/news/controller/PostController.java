@@ -48,6 +48,12 @@ public class PostController {
         return postService.toggleLike(id, CurrentUser.requireId());
     }
 
+    /** Delete own post — only the author may do this. */
+    @DeleteMapping("/{id}")
+    public void deleteOwnPost(@PathVariable Long id) {
+        postService.deleteOwnPost(id, CurrentUser.requireId());
+    }
+
     /** Comment on a post. */
     @PostMapping("/{id}/comments")
     public CommentResponse comment(@PathVariable Long id,

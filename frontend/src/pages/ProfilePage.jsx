@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { storage } from '../lib/firebase';
-import { useUpdateProfile, useMyPosts } from '../lib/queries';
+import { useUpdateProfile, useMyPosts, useDeletePost } from '../lib/queries';
 import { useAuth } from '../context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/client';
@@ -105,7 +105,7 @@ function ProfileField({ label, children }) {
 }
 
 /* ── Activity post card ────────────────────────────────────────────── */
-function PostCard({ post }) {
+function PostCard({ post, onDelete }) {
   const status = post.status || 'APPROVED';
   const isLive = status === 'APPROVED';
   const statusStyles = {
@@ -122,6 +122,16 @@ function PostCard({ post }) {
           borderRadius: 99, background: statusStyles.bg, color: statusStyles.color,
         }}>{statusStyles.label}</span>
         <span className="font-sans text-ink-faint" style={{ fontSize: 12 }}>{timeAgo(post.createdAt)}</span>
+        {onDelete && (
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (window.confirm('Delete this post? This cannot be undone.')) onDelete(post.id); }}
+            className="ml-auto font-sans font-bold cursor-pointer"
+            style={{ fontSize: 11, color: 'var(--danger)', background: 'none', border: 'none', padding: 0 }}
+          >
+            Delete
+          </button>
+        )}
       </div>
       <h4 className={`font-display font-bold ${isLive ? 'group-hover:text-accent-deep' : ''} transition-colors`}
         style={{ fontSize: 17, color: 'var(--ink)', lineHeight: 1.25, margin: 0, letterSpacing: '-0.01em' }}>
@@ -151,6 +161,7 @@ export default function ProfilePage() {
   const { user: me, loading: authLoading, completeLogin } = useAuth();
   const navigate = useNavigate();
   const updateProfile = useUpdateProfile();
+  const deletePost    = useDeletePost();
   const isOwnProfile = id === 'me';
 
   // Full DB profile for email, mcName, lcName, officeCode
@@ -427,7 +438,7 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="flex flex-col">
-                {myPosts.map(p => <PostCard key={p.id} post={p} />)}
+                {myPosts.map(p => <PostCard key={p.id} post={p} onDelete={(id) => deletePost.mutate(id)} />)}
               </div>
             )
           ) : (

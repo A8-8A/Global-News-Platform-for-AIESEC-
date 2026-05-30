@@ -26,6 +26,8 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     /** An MCP's own posts (any status), newest first. */
     List<Post> findByAuthorIdOrderByCreatedAtDesc(Long authorId);
 
+    List<Post> findAllByOrderByCreatedAtDesc();
+
     /** Count an author's posts in a given status - for MCP activity summary. */
     long countByAuthorIdAndStatus(Long authorId, PostStatus status);
 

@@ -95,6 +95,16 @@ public class PostService {
                 .toList();
     }
 
+    /** Delete own post — authors can remove their own posts. */
+    @Transactional
+    public void deleteOwnPost(Long postId, Long userId) {
+        Post post = requirePost(postId);
+        if (!post.getAuthor().getId().equals(userId)) {
+            throw new ForbiddenException("You can only delete your own posts.");
+        }
+        postRepository.delete(post);
+    }
+
     // ----------------------------------------------------------------
     // Feed
     // ----------------------------------------------------------------

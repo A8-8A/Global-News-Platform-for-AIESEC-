@@ -125,3 +125,11 @@ public class AdminService {
                 p.getCreatedAt());
     }
 }
+
+    /** All posts across all statuses — for the admin feed view. */
+    @Transactional(readOnly = true)
+    public List<PendingPostResponse> getAllPosts() {
+        return postRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(AdminService::toPendingResponse)
+                .toList();
+    }

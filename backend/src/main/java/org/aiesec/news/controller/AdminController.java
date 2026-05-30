@@ -64,6 +64,11 @@ public class AdminController {
 
     // --- visibility ---
 
+    @GetMapping("/posts/all")
+    public List<PendingPostResponse> allPosts() {
+        return adminService.getAllPosts();
+    }
+
     @GetMapping("/mcp-activity")
     public List<McpActivityResponse> mcpActivity() {
         return adminService.getMcpActivity();

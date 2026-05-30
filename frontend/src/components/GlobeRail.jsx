@@ -1,3 +1,4 @@
+import 'flag-icons/css/flag-icons.min.css';
 // GlobeRail — interactive AIESEC world globe for the feed right rail.
 //
 // Real Earth texture from Three.js r128 repo (same version we bundle).
@@ -82,6 +83,16 @@ const ENTITIES = {
   ZM:{n:'Zambia',lat:-13.1,lon:27.8},       ZW:{n:'Zimbabwe',lat:-19.0,lon:29.2},
 };
 
+function FlagIcon({ iso, size = 20 }) {
+  if (!iso || iso.length !== 2) return null;
+  return (
+    <span
+      className={`fi fi-${iso.toLowerCase()}`}
+      style={{ width: size * 1.33, height: size, display: 'inline-block', borderRadius: 2, flexShrink: 0, boxShadow: '0 0 0 1px rgba(0,0,0,0.1)', verticalAlign: 'middle' }}
+    />
+  );
+}
+// Keep emoji as fallback for dots (not used in widget anymore)
 function flagEmoji(iso) {
   if (!iso || iso.length !== 2) return '';
   return String.fromCodePoint(
