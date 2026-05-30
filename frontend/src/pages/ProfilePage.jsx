@@ -151,9 +151,12 @@ export default function ProfilePage() {
   const { user: me, loading: authLoading, completeLogin } = useAuth();
   const navigate = useNavigate();
 
-  // Resolve "me" to the real user id so the query key is stable.
-  const resolvedId = id === 'me' ? me?.id : id;
+  // isOwnProfile drives which endpoint fires (/api/auth/me vs /api/users/:id).
+  // resolvedId is only needed for PUT (save bio/photo) and for other users' profiles.
+  // We intentionally do NOT gate own-profile on resolvedId — me.id may be
+  // undefined if the backend omits it (seen in prod), but /api/auth/me still works.
   const isOwnProfile = id === 'me' || (me && String(me.id) === String(id));
+  const resolvedId = id === 'me' ? me?.id : id;
 
   const { data, isLoading, isError, refetch } = useProfile(resolvedId, isOwnProfile);
   const updateProfile = useUpdateProfile();
