@@ -202,8 +202,11 @@ export default function ProfilePage() {
   const bio        = base.bio       || '';
   const photoUrl   = base.photoUrl  || me?.photoUrl  || null;
   const officeCode = base.officeCode || null;
-  const lcName     = base.lcName    || base.officeName || null;
   const mcName     = base.mcName    || null;
+  // lcName is the LC — only show if it's different from mcName to avoid duplication
+  const lcName     = (base.lcName && base.lcName !== base.mcName) ? base.lcName
+                   : (base.officeName && base.officeName !== base.mcName) ? base.officeName
+                   : null;
   const roleTitle  = base.roleTitle || me?.roleTitle  || 'Member';
   const userId     = base.id        || me?.id;
 
@@ -307,10 +310,7 @@ export default function ProfilePage() {
 
           {/* Full name */}
           <ProfileField label="Full name">
-            <div className="flex items-center gap-2.5">
-              <span className="font-sans font-bold text-ink" style={{ fontSize: 15 }}>{fullName}</span>
-              {officeCode && <Flag code={officeCode} size={16} />}
-            </div>
+            <span className="font-sans font-bold text-ink" style={{ fontSize: 15 }}>{fullName}</span>
           </ProfileField>
 
           {/* Email */}
@@ -360,13 +360,10 @@ export default function ProfilePage() {
             <ProfileField label="Entity">
               <div className="flex flex-col gap-0.5">
                 {mcName && (
-                  <div className="flex items-center gap-2">
-                    {officeCode && <Flag code={officeCode} size={14} />}
-                    <span className="font-sans font-bold text-ink" style={{ fontSize: 15 }}>{mcName}</span>
-                  </div>
+                  <span className="font-sans font-bold text-ink" style={{ fontSize: 15 }}>{mcName}</span>
                 )}
                 {lcName && (
-                  <span className="font-sans text-ink-soft" style={{ fontSize: 13, paddingLeft: mcName ? 22 : 0 }}>
+                  <span className="font-sans text-ink-soft" style={{ fontSize: 13 }}>
                     {lcName}
                   </span>
                 )}
@@ -422,9 +419,11 @@ export default function ProfilePage() {
                 <span className="font-sans text-ink-faint" style={{ fontSize: 13 }}>
                   Stories you file will appear here.
                 </span>
-                <Btn variant="primary" size="sm" className="mt-2" onClick={() => navigate('/compose')}>
-                  Write your first story
-                </Btn>
+                {me?.role === 'MCP' && (
+                  <Btn variant="primary" size="sm" className="mt-2" onClick={() => navigate('/compose')}>
+                    Write your first story
+                  </Btn>
+                )}
               </div>
             ) : (
               <div className="flex flex-col">

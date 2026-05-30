@@ -14,18 +14,7 @@ import { RuleLabel } from '../components/ui/RuleLabel';
 import { ArrowIcon, CheckIcon } from '../components/ui/Icon';
 import { timeAgo, excerptOf, FeedSkeleton } from '../components/ui/states';
 
-const AUTHORIZE_URL = import.meta.env.VITE_AIESEC_AUTHORIZE_URL;
-const CLIENT_ID = import.meta.env.VITE_AIESEC_CLIENT_ID;
-const REDIRECT_URI = import.meta.env.VITE_AIESEC_REDIRECT_URI;
 
-function loginWithAiesec() {
-  const params = new URLSearchParams({
-    response_type: 'code',
-    client_id: CLIENT_ID,
-    redirect_uri: REDIRECT_URI,
-  });
-  window.location.href = `${AUTHORIZE_URL}?${params.toString()}`;
-}
 
 /* ---------- Nav ---------- */
 function LandingNav({ onSignIn }) {
@@ -42,7 +31,7 @@ function LandingNav({ onSignIn }) {
           className="h-[38px] px-[18px] rounded-md font-sans font-bold cursor-pointer text-white"
           style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(8px)', fontSize: 13 }}
         >
-          Sign in with EXPA →
+          Login
         </button>
       </div>
     </header>
@@ -50,7 +39,7 @@ function LandingNav({ onSignIn }) {
 }
 
 /* ---------- Hero ---------- */
-function LandingHero({ onSignIn, onReadFeed }) {
+function LandingHero({ onSignIn }) {
   return (
     <section
       className="relative overflow-hidden text-white flex flex-col justify-center px-6 sm:px-14"
@@ -78,13 +67,7 @@ function LandingHero({ onSignIn, onReadFeed }) {
           For the first time, every Member Committee President files entity updates to a single place — and every member of the network reads them in one feed. No more Slack channels, scattered newsletters, or carousels lost to the algorithm.
         </p>
         <div className="flex gap-3.5 flex-wrap" style={{ marginTop: 44 }}>
-          <button
-            onClick={onReadFeed}
-            className="inline-flex items-center gap-2.5 rounded-md font-sans font-bold cursor-pointer"
-            style={{ height: 56, padding: '0 28px', background: '#fff', color: 'var(--accent-deep)', fontSize: 15 }}
-          >
-            Read the feed <ArrowIcon />
-          </button>
+          
           <button
             onClick={onSignIn}
             className="rounded-md font-sans font-bold cursor-pointer text-white"
@@ -240,7 +223,7 @@ function LandingThisWeek() {
             </h2>
           </div>
           <Link to="/login" className="font-sans font-bold text-accent-deep" style={{ fontSize: 14, textDecoration: 'underline', textUnderlineOffset: 4 }}>
-            Sign in to read everything →
+            Login to read everything →
           </Link>
         </div>
 
@@ -253,7 +236,7 @@ function LandingThisWeek() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {posts.map((p) => (
-              <Link key={p.id} to={`/feed/${p.id}`} className="bg-white rounded-md overflow-hidden flex flex-col border border-line no-underline">
+              <div key={p.id} onClick={onSignIn} className="bg-white rounded-md overflow-hidden flex flex-col border border-line no-underline cursor-pointer">
                 <Photo src={p.mediaUrl} tone="sky" ratio="16 / 10" />
                 <div className="flex flex-col gap-3 flex-1" style={{ padding: '24px 24px 26px' }}>
                   <div className="flex items-center gap-2">
@@ -271,7 +254,7 @@ function LandingThisWeek() {
                     <span>{timeAgo(p.createdAt)}</span>
                   </div>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}
@@ -281,7 +264,7 @@ function LandingThisWeek() {
 }
 
 /* ---------- CTA ---------- */
-function LandingCTA({ onSignIn, onReadFeed }) {
+function LandingCTA({ onSignIn }) {
   return (
     <section className="relative overflow-hidden text-white px-6 sm:px-14" style={{ background: 'var(--ink)', padding: '120px 56px' }}>
       <img src="/brand/AIESEC-Human-White.png" alt="" aria-hidden="true" className="absolute pointer-events-none" style={{ right: -100, top: -60, width: 580, opacity: 0.08 }} />
@@ -297,11 +280,9 @@ function LandingCTA({ onSignIn, onReadFeed }) {
         </p>
         <div className="flex gap-3.5 justify-center flex-wrap" style={{ marginTop: 48 }}>
           <button onClick={onSignIn} className="inline-flex items-center gap-3 rounded-md font-sans font-bold cursor-pointer text-white" style={{ height: 60, padding: '0 32px', background: 'var(--accent)', fontSize: 15 }}>
-            <HumanMark size={22} tone="white" /> Sign in with AIESEC EXPA <ArrowIcon />
+            Login with AIESEC EXPA
           </button>
-          <button onClick={onReadFeed} className="rounded-md font-sans font-bold cursor-pointer text-white" style={{ height: 60, padding: '0 28px', background: 'transparent', border: '1px solid rgba(255,255,255,0.3)', fontSize: 15 }}>
-            Read as a guest
-          </button>
+          
         </div>
       </div>
     </section>
@@ -330,16 +311,16 @@ function LandingFooter() {
 
 export default function Landing() {
   const navigate = useNavigate();
-  const onReadFeed = () => navigate('/feed');
+  const onSignInNav = () => navigate('/login');
   return (
     <div className="bg-paper min-h-full relative">
-      <LandingNav onSignIn={loginWithAiesec} />
-      <LandingHero onSignIn={loginWithAiesec} onReadFeed={onReadFeed} />
+      <LandingNav onSignIn={onSignInNav} />
+      <LandingHero onSignIn={onSignInNav}  />
       <LandingWhat />
       <LandingHow />
       <LandingWhy />
       <LandingThisWeek />
-      <LandingCTA onSignIn={loginWithAiesec} onReadFeed={onReadFeed} />
+      <LandingCTA onSignIn={onSignInNav}  />
       <LandingFooter />
     </div>
   );

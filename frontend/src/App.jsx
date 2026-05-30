@@ -47,8 +47,8 @@ export default function App() {
 
       {/* Inside the shared Layout (top nav + footer) */}
       <Route element={<Layout />}>
-        <Route path="/feed" element={<Feed />} />
-        <Route path="/feed/:id" element={<PostDetail />} />
+        <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
+        <Route path="/feed/:id" element={<ProtectedRoute><PostDetail /></ProtectedRoute>} />
         <Route
           path="/compose"
           element={

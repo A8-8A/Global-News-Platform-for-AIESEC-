@@ -62,12 +62,7 @@ export default function Login() {
       {/* Right — sign in */}
       <div className="flex flex-col" style={{ padding: '40px 64px' }}>
         <div className="flex justify-end font-sans text-ink-soft" style={{ fontSize: 13 }}>
-          <span>
-            No AIESEC account?{' '}
-            <Link to="/feed" className="font-bold text-accent-deep underline" style={{ textUnderlineOffset: 3 }}>
-              Read as guest
-            </Link>
-          </span>
+          
         </div>
 
         <div className="my-auto w-full flex flex-col gap-7" style={{ maxWidth: 420 }}>
